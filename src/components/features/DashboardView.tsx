@@ -1,0 +1,180 @@
+import { StatCard } from './StatCard'
+import { UserCircle, CalendarDots, CurrencyDollar, EnvelopeSimple } from '@phosphor-icons/react'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import type { DashboardStats, Event, Transaction } from '@/lib/types'
+import { formatCurrency, formatDate } from '@/lib/data-utils'
+
+interface DashboardViewProps {
+  stats: DashboardStats
+  upcomingEvents: Event[]
+  recentTransactions: Transaction[]
+  loading?: boolean
+}
+
+export function DashboardView({ stats, upcomingEvents, recentTransactions, loading }: DashboardViewProps) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground mt-1">
+          Welcome to the NABIP Association Management System
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Members"
+          value={loading ? '...' : stats.totalMembers.toLocaleString()}
+          trend={stats.memberGrowth}
+          icon={<UserCircle size={24} weight="duotone" />}
+          loading={loading}
+        />
+        <StatCard
+          title="Active Members"
+          value={loading ? '...' : stats.activeMembers.toLocaleString()}
+          icon={<UserCircle size={24} weight="duotone" />}
+          loading={loading}
+        />
+        <StatCard
+          title="Total Revenue"
+          value={loading ? '...' : formatCurrency(stats.totalRevenue)}
+          trend={stats.revenueGrowth}
+          icon={<CurrencyDollar size={24} weight="duotone" />}
+          loading={loading}
+        />
+        <StatCard
+          title="Upcoming Events"
+          value={loading ? '...' : stats.upcomingEvents}
+          icon={<CalendarDots size={24} weight="duotone" />}
+          loading={loading}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Upcoming Events</h2>
+            <CalendarDots size={20} className="text-muted-foreground" />
+          </div>
+          <div className="space-y-3">
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="p-3 rounded-lg bg-muted animate-shimmer h-20" />
+              ))
+            ) : upcomingEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No upcoming events
+              </p>
+            ) : (
+              upcomingEvents.slice(0, 5).map((event) => (
+                <div
+                  key={event.id}
+                  className="p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm truncate">{event.name}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatDate(event.startDate, true)}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="ml-2 shrink-0">
+                      {event.registeredCount}/{event.capacity}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-teal transition-all"
+                      style={{
+                        width: `${(event.registeredCount / event.capacity) * 100}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Recent Transactions</h2>
+            <CurrencyDollar size={20} className="text-muted-foreground" />
+          </div>
+          <div className="space-y-2">
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-2">
+                  <div className="h-4 w-32 bg-muted animate-shimmer rounded" />
+                  <div className="h-4 w-16 bg-muted animate-shimmer rounded" />
+                </div>
+              ))
+            ) : recentTransactions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No recent transactions
+              </p>
+            ) : (
+              recentTransactions.slice(0, 8).map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between py-2 border-b last:border-0"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {transaction.description}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(transaction.date)}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-sm font-semibold tabular-nums ${
+                      transaction.amount >= 0 ? 'text-teal' : 'text-destructive'
+                    }`}
+                  >
+                    {transaction.amount >= 0 ? '+' : ''}
+                    {formatCurrency(transaction.amount)}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <Card className="p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <EnvelopeSimple size={20} className="text-muted-foreground" />
+          <h2 className="text-lg font-semibold">Email Engagement</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 rounded-lg bg-muted/30">
+            <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">
+              Emails Sent
+            </p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {loading ? '...' : stats.emailsSent.toLocaleString()}
+            </p>
+          </div>
+          <div className="p-4 rounded-lg bg-muted/30">
+            <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">
+              Avg Engagement
+            </p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {loading ? '...' : `${stats.avgEngagementScore}%`}
+            </p>
+          </div>
+          <div className="p-4 rounded-lg bg-muted/30">
+            <p className="text-sm text-muted-foreground uppercase tracking-wide mb-1">
+              Active Campaigns
+            </p>
+            <p className="text-2xl font-semibold tabular-nums">
+              {loading ? '...' : '12'}
+            </p>
+          </div>
+        </div>
+      </Card>
+    </div>
+  )
+}
