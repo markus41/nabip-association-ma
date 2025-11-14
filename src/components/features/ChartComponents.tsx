@@ -95,18 +95,18 @@ export function CustomLineChart({
 }: LineChartProps) {
   if (loading) {
     return (
-      <Card className="p-6">
+      <Card className="p-4">
         {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-        {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+        {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
         <div className="animate-shimmer rounded w-full aspect-[16/9]" />
       </Card>
     )
   }
 
   return (
-    <Card className="p-6 flex flex-col">
+    <Card className="p-4 flex flex-col">
       {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-      {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+      {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
       <div className="w-full aspect-[16/9]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
@@ -156,18 +156,18 @@ export function CustomBarChart({
 }: BarChartProps) {
   if (loading) {
     return (
-      <Card className="p-6">
+      <Card className="p-4">
         {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-        {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+        {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
         <div className="animate-shimmer rounded w-full aspect-[16/9]" />
       </Card>
     )
   }
 
   return (
-    <Card className="p-6 flex flex-col">
+    <Card className="p-4 flex flex-col">
       {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-      {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+      {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
       <div className="w-full aspect-[16/9]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
@@ -215,18 +215,18 @@ export function CustomAreaChart({
 }: AreaChartProps) {
   if (loading) {
     return (
-      <Card className="p-6">
+      <Card className="p-4">
         {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-        {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+        {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
         <div className="animate-shimmer rounded w-full aspect-[16/9]" />
       </Card>
     )
   }
 
   return (
-    <Card className="p-6 flex flex-col">
+    <Card className="p-4 flex flex-col">
       {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-      {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+      {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
       <div className="w-full aspect-[16/9]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
@@ -276,18 +276,18 @@ export function CustomPieChart({
 }: PieChartProps) {
   if (loading) {
     return (
-      <Card className="p-6">
+      <Card className="p-4">
         {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-        {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+        {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
         <div className="animate-shimmer rounded w-full aspect-[16/9]" />
       </Card>
     )
   }
 
   return (
-    <Card className="p-6 flex flex-col">
+    <Card className="p-4 flex flex-col">
       {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-      {description && <p className="text-sm text-muted-foreground mb-4">{description}</p>}
+      {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
       <div className="w-full aspect-[16/9]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
