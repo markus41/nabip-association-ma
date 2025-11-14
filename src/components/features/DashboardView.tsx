@@ -2,6 +2,7 @@ import { StatCard } from './StatCard'
 import { UserCircle, CalendarDots, CurrencyDollar, EnvelopeSimple } from '@phosphor-icons/react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import type { DashboardStats, Event, Transaction } from '@/lib/types'
 import { formatCurrency, formatDate } from '@/lib/data-utils'
 
@@ -50,6 +51,25 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
           loading={loading}
         />
       </div>
+
+      {(stats.pendingRenewals! > 0 || stats.expiringSoon! > 0) && (
+        <Card className="p-4 border-accent bg-accent/5">
+          <div className="flex items-start gap-4">
+            <div className="flex-1">
+              <h3 className="font-semibold mb-1">Membership Alerts</h3>
+              <div className="text-sm text-muted-foreground space-y-1">
+                {stats.pendingRenewals! > 0 && (
+                  <p>• {stats.pendingRenewals} members have renewals due within 30 days</p>
+                )}
+                {stats.expiringSoon! > 0 && (
+                  <p>• {stats.expiringSoon} members are expired or in grace period</p>
+                )}
+              </div>
+            </div>
+            <Button variant="outline" size="sm">View Details</Button>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">

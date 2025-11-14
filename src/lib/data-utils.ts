@@ -1,4 +1,4 @@
-import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats } from './types'
+import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report, Credential } from './types'
 
 const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Barbara', 'David', 'Elizabeth', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen']
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin']
@@ -12,13 +12,25 @@ export function generateId(): string {
 export function generateMembers(count: number): Member[] {
   const members: Member[] = []
   const memberTypes: ('individual' | 'organizational' | 'student' | 'lifetime')[] = ['individual', 'organizational', 'student', 'lifetime']
-  const statuses: ('active' | 'pending' | 'expired' | 'suspended')[] = ['active', 'active', 'active', 'active', 'pending', 'expired']
+  const statuses: ('active' | 'pending' | 'expired' | 'suspended' | 'grace_period')[] = ['active', 'active', 'active', 'active', 'pending', 'expired', 'grace_period']
   
   for (let i = 0; i < count; i++) {
     const firstName = firstNames[Math.floor(Math.random() * firstNames.length)]
     const lastName = lastNames[Math.floor(Math.random() * lastNames.length)]
     const joinedDate = new Date(Date.now() - Math.random() * 365 * 5 * 24 * 60 * 60 * 1000)
     const status = statuses[Math.floor(Math.random() * statuses.length)]
+    const expiryDate = new Date(joinedDate.getTime() + 365 * 24 * 60 * 60 * 1000)
+    
+    const credentials: Credential[] = Math.random() > 0.6 ? [
+      {
+        id: generateId(),
+        name: designations[Math.floor(Math.random() * designations.length)],
+        issuer: 'NABIP',
+        issuedDate: new Date(Date.now() - Math.random() * 730 * 24 * 60 * 60 * 1000).toISOString(),
+        expiryDate: new Date(Date.now() + Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
+        status: 'active'
+      }
+    ] : []
     
     members.push({
       id: generateId(),
@@ -29,11 +41,21 @@ export function generateMembers(count: number): Member[] {
       status,
       chapterId: `chapter-${Math.floor(Math.random() * 50) + 1}`,
       joinedDate: joinedDate.toISOString(),
-      expiryDate: new Date(joinedDate.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      expiryDate: expiryDate.toISOString(),
       phone: `(${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
       company: Math.random() > 0.3 ? companies[Math.floor(Math.random() * companies.length)] : undefined,
+      jobTitle: Math.random() > 0.4 ? 'Benefits Consultant' : undefined,
       designations: Math.random() > 0.5 ? [designations[Math.floor(Math.random() * designations.length)]] : [],
-      engagementScore: Math.floor(Math.random() * 100)
+      credentials,
+      engagementScore: Math.floor(Math.random() * 100),
+      preferences: {
+        emailNotifications: true,
+        smsNotifications: Math.random() > 0.5,
+        newsletterSubscribed: Math.random() > 0.3,
+        eventReminders: true,
+        marketingEmails: Math.random() > 0.4
+      },
+      lastLoginDate: Math.random() > 0.3 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString() : undefined
     })
   }
   
@@ -273,16 +295,189 @@ export function getStatusColor(status: string): string {
     pending: 'bg-accent/10 text-accent-foreground border-accent/20',
     expired: 'bg-destructive/10 text-destructive border-destructive/20',
     suspended: 'bg-muted text-muted-foreground border-border',
+    grace_period: 'bg-accent/10 text-accent-foreground border-accent/20',
     draft: 'bg-muted text-muted-foreground border-border',
     published: 'bg-teal/10 text-teal border-teal/20',
     completed: 'bg-primary/10 text-primary border-primary/20',
     cancelled: 'bg-destructive/10 text-destructive border-destructive/20',
     confirmed: 'bg-teal/10 text-teal border-teal/20',
+    waitlisted: 'bg-accent/10 text-accent-foreground border-accent/20',
     failed: 'bg-destructive/10 text-destructive border-destructive/20',
     refunded: 'bg-muted text-muted-foreground border-border',
+    processing: 'bg-accent/10 text-accent-foreground border-accent/20',
     sent: 'bg-teal/10 text-teal border-teal/20',
-    scheduled: 'bg-accent/10 text-accent-foreground border-accent/20'
+    scheduled: 'bg-accent/10 text-accent-foreground border-accent/20',
+    in_progress: 'bg-accent/10 text-accent-foreground border-accent/20',
+    enrolled: 'bg-primary/10 text-primary border-primary/20',
+    dropped: 'bg-muted text-muted-foreground border-border',
+    revoked: 'bg-destructive/10 text-destructive border-destructive/20'
   }
   
   return statusColors[status] || 'bg-muted text-muted-foreground border-border'
+}
+
+export function generateCourses(count: number): Course[] {
+  const courses: Course[] = []
+  const categories = [
+    'Compliance & Regulations',
+    'Sales & Marketing',
+    'Benefits Administration',
+    'Medicare & Medicaid',
+    'Leadership Development',
+    'Technology & Innovation'
+  ]
+  
+  const courseNames = [
+    'REBC Professional Designation',
+    'Medicare Modernization Act',
+    'ACA Compliance Essentials',
+    'Advanced Sales Techniques',
+    'Employee Benefits Fundamentals',
+    'Healthcare Reform Updates',
+    'Digital Marketing for Brokers',
+    'Group Benefits Strategies',
+    'Individual Health Insurance',
+    'Voluntary Benefits Overview',
+    'HIPAA Privacy & Security',
+    'Broker Management Best Practices'
+  ]
+  
+  for (let i = 0; i < count; i++) {
+    const price = Math.random() > 0.3 ? Math.floor(Math.random() * 500) + 100 : 0
+    
+    courses.push({
+      id: generateId(),
+      name: courseNames[Math.floor(Math.random() * courseNames.length)],
+      description: 'Comprehensive training program designed to enhance your professional skills and knowledge in the benefits industry.',
+      category: categories[Math.floor(Math.random() * categories.length)],
+      duration: Math.floor(Math.random() * 20) + 5,
+      ceCredits: Math.random() > 0.4 ? Math.floor(Math.random() * 10) + 5 : undefined,
+      instructor: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
+      enrollmentCount: Math.floor(Math.random() * 500) + 50,
+      completionRate: Math.floor(Math.random() * 40) + 60,
+      price,
+      status: 'published',
+      prerequisites: Math.random() > 0.7 ? ['Basic Benefits Knowledge'] : undefined,
+      learningObjectives: [
+        'Understand key concepts and regulations',
+        'Apply best practices in real-world scenarios',
+        'Develop strategic thinking skills',
+        'Enhance client communication abilities'
+      ]
+    })
+  }
+  
+  return courses
+}
+
+export function generateEnrollments(count: number, courseIds: string[]): Enrollment[] {
+  const enrollments: Enrollment[] = []
+  const statuses: ('enrolled' | 'in_progress' | 'completed' | 'dropped')[] = [
+    'completed',
+    'completed',
+    'in_progress',
+    'in_progress',
+    'in_progress',
+    'enrolled',
+    'dropped'
+  ]
+  
+  for (let i = 0; i < count; i++) {
+    const status = statuses[Math.floor(Math.random() * statuses.length)]
+    const enrolledDate = new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000)
+    const progress = status === 'completed' ? 100 : status === 'in_progress' ? Math.floor(Math.random() * 80) + 10 : 0
+    
+    enrollments.push({
+      id: generateId(),
+      memberId: `member-${Math.floor(Math.random() * 1000)}`,
+      courseId: courseIds[Math.floor(Math.random() * courseIds.length)],
+      enrolledDate: enrolledDate.toISOString(),
+      startedDate: status !== 'enrolled' ? new Date(enrolledDate.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString() : undefined,
+      completedDate: status === 'completed' ? new Date(enrolledDate.getTime() + Math.random() * 60 * 24 * 60 * 60 * 1000).toISOString() : undefined,
+      status,
+      progress
+    })
+  }
+  
+  return enrollments
+}
+
+export function generateReports(count: number): Report[] {
+  const reports: Report[] = []
+  const categories: ('membership' | 'financial' | 'events' | 'engagement' | 'custom')[] = [
+    'membership',
+    'financial',
+    'events',
+    'engagement',
+    'custom'
+  ]
+  
+  const reportNames: Record<string, string[]> = {
+    membership: [
+      'Active Members Report',
+      'Membership Growth Analysis',
+      'Renewal Tracking Report',
+      'Member Demographics',
+      'Lapsed Members Report'
+    ],
+    financial: [
+      'Revenue Summary',
+      'Dues Collection Report',
+      'Event Revenue Analysis',
+      'Outstanding Invoices',
+      'Payment Method Breakdown'
+    ],
+    events: [
+      'Event Attendance Report',
+      'Registration Analytics',
+      'Event ROI Analysis',
+      'Capacity Utilization',
+      'Speaker Performance'
+    ],
+    engagement: [
+      'Member Engagement Score',
+      'Email Campaign Performance',
+      'Website Analytics',
+      'Event Participation Trends',
+      'Member Activity Log'
+    ],
+    custom: [
+      'Custom Analytics Dashboard',
+      'Chapter Performance Comparison',
+      'Quarterly Business Review',
+      'Annual Metrics Report',
+      'Executive Summary'
+    ]
+  }
+  
+  for (let i = 0; i < count; i++) {
+    const category = categories[Math.floor(Math.random() * categories.length)]
+    const names = reportNames[category]
+    const name = names[Math.floor(Math.random() * names.length)]
+    const hasSchedule = Math.random() > 0.6
+    
+    reports.push({
+      id: generateId(),
+      name,
+      description: `Comprehensive ${category} analysis providing insights into key metrics and trends.`,
+      category,
+      createdBy: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
+      createdDate: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
+      lastRunDate: Math.random() > 0.3 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString() : undefined,
+      schedule: hasSchedule ? {
+        frequency: ['daily', 'weekly', 'monthly'][Math.floor(Math.random() * 3)] as 'daily' | 'weekly' | 'monthly',
+        dayOfWeek: Math.floor(Math.random() * 7),
+        time: `${Math.floor(Math.random() * 12) + 1}:00 AM`,
+        recipients: ['admin@nabip.org']
+      } : undefined,
+      columns: [
+        { field: 'name', label: 'Name', type: 'string' },
+        { field: 'value', label: 'Value', type: 'number' },
+        { field: 'date', label: 'Date', type: 'date' }
+      ],
+      isPublic: Math.random() > 0.5
+    })
+  }
+  
+  return reports
 }

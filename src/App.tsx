@@ -9,6 +9,9 @@ import { EventsView } from '@/components/features/EventsView'
 import { CommunicationsView } from '@/components/features/CommunicationsView'
 import { FinanceView } from '@/components/features/FinanceView'
 import { ChaptersView } from '@/components/features/ChaptersView'
+import { LearningView } from '@/components/features/LearningView'
+import { MemberPortal } from '@/components/features/MemberPortal'
+import { ReportsView } from '@/components/features/ReportsView'
 import {
   ChartBar,
   UserCircle,
@@ -16,7 +19,10 @@ import {
   EnvelopeSimple,
   CurrencyDollar,
   Buildings,
-  Command
+  Command,
+  GraduationCap,
+  FileText,
+  House
 } from '@phosphor-icons/react'
 import {
   generateMembers,
@@ -24,12 +30,15 @@ import {
   generateEvents,
   generateTransactions,
   generateCampaigns,
+  generateCourses,
+  generateEnrollments,
+  generateReports,
   calculateDashboardStats
 } from '@/lib/data-utils'
-import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats } from '@/lib/types'
+import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report } from '@/lib/types'
 import { toast } from 'sonner'
 
-type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters'
+type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
@@ -40,6 +49,9 @@ function App() {
   const [events, setEvents] = useKV<Event[]>('ams-events', [])
   const [transactions, setTransactions] = useKV<Transaction[]>('ams-transactions', [])
   const [campaigns, setCampaigns] = useKV<Campaign[]>('ams-campaigns', [])
+  const [courses, setCourses] = useKV<Course[]>('ams-courses', [])
+  const [enrollments, setEnrollments] = useKV<Enrollment[]>('ams-enrollments', [])
+  const [reports, setReports] = useKV<Report[]>('ams-reports', [])
   
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -49,7 +61,9 @@ function App() {
     totalRevenue: 0,
     revenueGrowth: 0,
     emailsSent: 0,
-    avgEngagementScore: 0
+    avgEngagementScore: 0,
+    pendingRenewals: 0,
+    expiringSoon: 0
   })
 
   useEffect(() => {
@@ -81,6 +95,20 @@ function App() {
         setCampaigns(newCampaigns)
       }
       
+      if (!courses || courses.length === 0) {
+        const newCourses = generateCourses(12)
+        setCourses(newCourses)
+        
+        const courseIds = newCourses.map(c => c.id)
+        const newEnrollments = generateEnrollments(30, courseIds)
+        setEnrollments(newEnrollments)
+      }
+      
+      if (!reports || reports.length === 0) {
+        const newReports = generateReports(20)
+        setReports(newReports)
+      }
+      
       setTimeout(() => setIsLoading(false), 500)
     }
     
@@ -89,8 +117,25 @@ function App() {
 
   useEffect(() => {
     if (members && members.length > 0 && events && events.length > 0 && transactions && transactions.length > 0) {
+      const now = new Date()
+      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+      
+      const pendingRenewals = members.filter(m => {
+        const expiry = new Date(m.expiryDate)
+        return m.status === 'active' && expiry > now && expiry <= thirtyDaysFromNow
+      }).length
+      
+      const expiringSoon = members.filter(m => {
+        const expiry = new Date(m.expiryDate)
+        return m.status === 'grace_period' || (m.status === 'active' && expiry <= now)
+      }).length
+      
       const newStats = calculateDashboardStats(members, events, transactions)
-      setStats(newStats)
+      setStats({
+        ...newStats,
+        pendingRenewals,
+        expiringSoon
+      })
     }
   }, [members, events, transactions])
 
@@ -122,7 +167,10 @@ function App() {
     { id: 'events', label: 'Events', icon: CalendarDots },
     { id: 'communications', label: 'Communications', icon: EnvelopeSimple },
     { id: 'finance', label: 'Finance', icon: CurrencyDollar },
-    { id: 'chapters', label: 'Chapters', icon: Buildings }
+    { id: 'chapters', label: 'Chapters', icon: Buildings },
+    { id: 'learning', label: 'Learning', icon: GraduationCap },
+    { id: 'reports', label: 'Reports', icon: FileText },
+    { id: 'portal', label: 'My Portal', icon: House }
   ]
 
   const upcomingEvents = (events || [])
@@ -223,12 +271,25 @@ function App() {
           {currentView === 'chapters' && (
             <ChaptersView chapters={chapters || []} loading={isLoading} />
           )}
+          {currentView === 'learning' && (
+            <LearningView
+              courses={courses || []}
+              enrollments={enrollments || []}
+              loading={isLoading}
+            />
+          )}
+          {currentView === 'reports' && (
+            <ReportsView reports={reports || []} loading={isLoading} />
+          )}
+          {currentView === 'portal' && (
+            <MemberPortal memberId="current-member-id" />
+          )}
         </main>
       </div>
 
       <div className="lg:hidden fixed bottom-0 left-0 right-0 border-t bg-card">
         <nav className="flex items-center justify-around p-2">
-          {navItems.slice(0, 5).map((item) => {
+          {navItems.slice(0, 6).map((item) => {
             const Icon = item.icon
             const isActive = currentView === item.id
             
