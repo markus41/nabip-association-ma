@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { DashboardStats, Event, Transaction } from '@/lib/types'
 import { formatCurrency, formatDate } from '@/lib/data-utils'
+import { CustomLineChart, CustomBarChart } from './ChartComponents'
 
 interface DashboardViewProps {
   stats: DashboardStats
@@ -14,6 +15,23 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ stats, upcomingEvents, recentTransactions, loading }: DashboardViewProps) {
+  const memberTrendData = [
+    { month: 'Jan', active: 18500, pending: 420 },
+    { month: 'Feb', active: 18750, pending: 380 },
+    { month: 'Mar', active: 19100, pending: 350 },
+    { month: 'Apr', active: 19400, pending: 410 },
+    { month: 'May', active: 19800, pending: 390 },
+    { month: 'Jun', active: 20150, pending: 360 },
+  ]
+
+  const revenueByTypeData = [
+    { type: 'Membership Dues', amount: 1650000 },
+    { type: 'Event Registrations', amount: 478000 },
+    { type: 'Donations', amount: 100000 },
+    { type: 'Sponsorships', amount: 125000 },
+    { type: 'Other', amount: 47000 },
+  ]
+
   return (
     <div className="space-y-6">
       <div>
@@ -195,6 +213,33 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
           </div>
         </div>
       </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CustomLineChart
+          data={memberTrendData}
+          lines={[
+            { dataKey: 'active', name: 'Active Members', color: 'oklch(0.25 0.05 250)' },
+            { dataKey: 'pending', name: 'Pending Approvals', color: 'oklch(0.60 0.12 200)' },
+          ]}
+          xAxisKey="month"
+          title="Member Trends"
+          description="Six-month membership growth and pending applications"
+          height={280}
+          loading={loading}
+        />
+
+        <CustomBarChart
+          data={revenueByTypeData}
+          bars={[
+            { dataKey: 'amount', name: 'Revenue', color: 'oklch(0.25 0.05 250)' },
+          ]}
+          xAxisKey="type"
+          title="Revenue Sources"
+          description="YTD revenue breakdown by category"
+          height={280}
+          loading={loading}
+        />
+      </div>
     </div>
   )
 }

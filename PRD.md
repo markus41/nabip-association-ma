@@ -47,6 +47,20 @@ Create an enterprise-grade Association Management System (AMS) for NABIP that me
 - **Progression**: User types natural language query → AI interprets intent and suggests actions → User selects match → System executes with preview/confirmation → Result displayed with success feedback
 - **Success criteria**: 90%+ query interpretation accuracy, <500ms response time, seamless handoff to relevant feature
 
+### Custom Report Builder
+- **Functionality**: Visual report creation tool with field selection, aggregations, scheduling, and multi-format export
+- **Purpose**: Empowers non-technical users to create sophisticated reports without SQL or technical knowledge
+- **Trigger**: "Reports" → "Create Report" button
+- **Progression**: Name report → Select category → Choose fields from grouped lists → Configure aggregations for numeric fields → Set visibility (public/private) → Optional: schedule automatic generation → Save report → Report appears in list with run capability
+- **Success criteria**: Users create custom reports in <3 minutes, scheduled reports generate correctly, exports work in all formats (CSV, Excel, PDF)
+
+### Interactive Data Visualizations
+- **Functionality**: Real-time charts and graphs showing member trends, revenue analysis, engagement metrics, and chapter performance
+- **Purpose**: Makes data insights immediately visible and actionable through beautiful, interactive visualizations
+- **Trigger**: Dashboard view or Reports → Visualizations tab
+- **Progression**: Load page → Charts render with smooth animations → User hovers for detailed tooltips → Charts update based on date ranges → User exports or shares insights
+- **Success criteria**: Charts load in <1 second, data updates reflect immediately, all charts responsive on mobile, tooltips show accurate calculations
+
 ### Chapter Hierarchy Management
 - **Functionality**: Visual organization chart of national → state → local chapters with delegation, revenue sharing, and isolated data views
 - **Purpose**: Supports NABIP's federated structure while maintaining unified data and enabling chapter autonomy
