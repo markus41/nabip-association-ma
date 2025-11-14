@@ -77,101 +77,101 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
   ]
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-4 max-w-[1400px]">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Finance</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Finance</h1>
+          <p className="text-sm text-muted-foreground">
             Track revenue and manage transactions
           </p>
         </div>
-        <Button variant="outline" className="w-full sm:w-auto">
-          <Download className="mr-2" size={18} />
+        <Button variant="outline" size="sm" className="w-full sm:w-auto">
+          <Download className="mr-2" size={16} />
           Export Report
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-teal/5 rounded-full -mr-16 -mt-16" />
-          <div className="relative space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-teal/5 rounded-full -mr-12 -mt-12" />
+          <div className="relative space-y-2">
             <div className="flex items-center justify-between">
-              <div className="w-12 h-12 rounded-xl bg-teal/10 flex items-center justify-center">
-                <CurrencyDollar size={24} weight="duotone" className="text-teal" />
+              <div className="w-9 h-9 rounded-lg bg-teal/10 flex items-center justify-center">
+                <CurrencyDollar size={20} weight="duotone" className="text-teal" />
               </div>
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-teal/10">
-                <TrendUp className="text-teal" weight="bold" size={14} />
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-teal/10">
+                <TrendUp className="text-teal" weight="bold" size={12} />
                 <span className="text-teal font-semibold text-xs">12.5%</span>
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 Total Revenue
               </p>
-              <p className="text-3xl font-bold tracking-tight tabular-nums mt-1">
+              <p className="text-2xl font-bold tracking-tight tabular-nums mt-0.5">
                 {loading ? '...' : formatCurrency(stats.totalRevenue)}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 vs last month
               </p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16" />
-          <div className="relative space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <CreditCard size={24} weight="duotone" className="text-primary" />
+        <Card className="p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-12 -mt-12" />
+          <div className="relative space-y-2">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <CreditCard size={20} weight="duotone" className="text-primary" />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 Membership Dues
               </p>
-              <p className="text-3xl font-bold tracking-tight tabular-nums mt-1">
+              <p className="text-2xl font-bold tracking-tight tabular-nums mt-0.5">
                 {loading ? '...' : formatCurrency(stats.membershipDues)}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {((stats.membershipDues / stats.totalRevenue) * 100).toFixed(1)}% of revenue
               </p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-teal/5 rounded-full -mr-16 -mt-16" />
-          <div className="relative space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-teal/10 flex items-center justify-center">
-              <CalendarBlank size={24} weight="duotone" className="text-teal" />
+        <Card className="p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-teal/5 rounded-full -mr-12 -mt-12" />
+          <div className="relative space-y-2">
+            <div className="w-9 h-9 rounded-lg bg-teal/10 flex items-center justify-center">
+              <CalendarBlank size={20} weight="duotone" className="text-teal" />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 Event Revenue
               </p>
-              <p className="text-3xl font-bold tracking-tight tabular-nums mt-1">
+              <p className="text-2xl font-bold tracking-tight tabular-nums mt-0.5">
                 {loading ? '...' : formatCurrency(stats.eventRevenue)}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {((stats.eventRevenue / stats.totalRevenue) * 100).toFixed(1)}% of revenue
               </p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full -mr-16 -mt-16" />
-          <div className="relative space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-              <Wallet size={24} weight="duotone" className="text-accent" />
+        <Card className="p-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-accent/5 rounded-full -mr-12 -mt-12" />
+          <div className="relative space-y-2">
+            <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center">
+              <Wallet size={20} weight="duotone" className="text-accent" />
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">
+              <p className="text-xs font-medium text-muted-foreground">
                 Donations
               </p>
-              <p className="text-3xl font-bold tracking-tight tabular-nums mt-1">
+              <p className="text-2xl font-bold tracking-tight tabular-nums mt-0.5">
                 {loading ? '...' : formatCurrency(stats.donations)}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {((stats.donations / stats.totalRevenue) * 100).toFixed(1)}% of revenue
               </p>
             </div>
@@ -179,22 +179,22 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         <Card className="xl:col-span-2 flex flex-col">
-          <div className="p-6 border-b">
-            <h2 className="text-lg font-semibold">Revenue Breakdown</h2>
-            <p className="text-sm text-muted-foreground mt-1">Distribution by category</p>
+          <div className="p-4 border-b">
+            <h2 className="text-base font-semibold">Revenue Breakdown</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Distribution by category</p>
           </div>
-          <div className="p-6 flex-1 flex flex-col">
-            <div className="space-y-6 flex-1">
+          <div className="p-4 flex-1 flex flex-col">
+            <div className="space-y-4 flex-1">
               {revenueCategories.map((category) => {
                 const Icon = category.icon
                 return (
-                  <div key={category.label} className="space-y-3">
+                  <div key={category.label} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                          <Icon size={20} weight="duotone" className="text-foreground" />
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                          <Icon size={18} weight="duotone" className="text-foreground" />
                         </div>
                         <div>
                           <p className="text-sm font-medium">{category.label}</p>
@@ -203,11 +203,11 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
                           </p>
                         </div>
                       </div>
-                      <p className="text-lg font-semibold tabular-nums">
+                      <p className="text-base font-semibold tabular-nums">
                         {formatCurrency(category.amount)}
                       </p>
                     </div>
-                    <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
                         className={`h-full ${category.color} transition-all duration-500 ease-out rounded-full`}
                         style={{ width: `${category.percentage}%` }}
@@ -218,16 +218,16 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
               })}
             </div>
             
-            <div className="mt-6 pt-6 border-t">
-              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Net Revenue</p>
+                  <p className="text-xs font-medium text-muted-foreground">Net Revenue</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     After {formatCurrency(stats.totalRefunds)} in refunds
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold tabular-nums">
+                  <p className="text-xl font-bold tabular-nums">
                     {formatCurrency(stats.netRevenue)}
                   </p>
                   <div className="flex items-center gap-1 text-xs text-teal mt-0.5 justify-end">
@@ -241,44 +241,44 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
         </Card>
 
         <Card className="xl:col-span-3 flex flex-col overflow-hidden">
-          <div className="p-6 border-b flex-shrink-0">
+          <div className="p-4 border-b flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Recent Transactions</h2>
-                <p className="text-sm text-muted-foreground mt-1">
+                <h2 className="text-base font-semibold">Recent Transactions</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Latest {transactions.slice(0, 20).length} transactions
                 </p>
               </div>
-              <Button variant="ghost" size="sm" className="gap-2">
+              <Button variant="ghost" size="sm" className="gap-1.5 h-8 text-xs">
                 View All
-                <ArrowRight size={16} weight="bold" />
+                <ArrowRight size={14} weight="bold" />
               </Button>
             </div>
           </div>
           <ScrollArea className="flex-1">
-            <div className="p-6 space-y-3">
+            <div className="p-3 space-y-2">
               {loading ? (
                 Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="p-4 rounded-lg border bg-card">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-start gap-3 flex-1">
-                        <div className="w-10 h-10 rounded-lg bg-muted animate-shimmer" />
-                        <div className="space-y-2 flex-1">
-                          <div className="h-4 bg-muted animate-shimmer rounded w-1/3" />
+                  <div key={i} className="p-3 rounded-lg border bg-card">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-start gap-2.5 flex-1">
+                        <div className="w-9 h-9 rounded-lg bg-muted animate-shimmer" />
+                        <div className="space-y-1.5 flex-1">
+                          <div className="h-3.5 bg-muted animate-shimmer rounded w-1/3" />
                           <div className="h-3 bg-muted animate-shimmer rounded w-1/2" />
                         </div>
                       </div>
-                      <div className="h-6 bg-muted animate-shimmer rounded w-20" />
+                      <div className="h-5 bg-muted animate-shimmer rounded w-16" />
                     </div>
                   </div>
                 ))
               ) : transactions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <Receipt size={32} className="text-muted-foreground" />
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+                    <Receipt size={28} className="text-muted-foreground" />
                   </div>
-                  <p className="text-muted-foreground font-medium">No transactions yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-muted-foreground font-medium">No transactions yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
                     Transactions will appear here once they're processed
                   </p>
                 </div>
@@ -297,21 +297,21 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
                   return (
                     <div
                       key={transaction.id}
-                      className="group p-4 rounded-lg border bg-card hover:bg-muted/50 hover:border-muted-foreground/20 transition-all cursor-pointer"
+                      className="group p-3 rounded-lg border bg-card hover:bg-muted/50 hover:border-muted-foreground/20 transition-all cursor-pointer"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-background transition-colors">
-                            <Icon size={20} weight="duotone" className="text-foreground" />
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                          <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-background transition-colors">
+                            <Icon size={18} weight="duotone" className="text-foreground" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-medium text-sm">{transaction.description}</p>
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-xs h-5">
                                 {transaction.type.replace('_', ' ')}
                               </Badge>
                             </div>
-                            <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
                               <span>{formatDate(transaction.date)}</span>
                               {transaction.referenceId && (
                                 <>
@@ -321,7 +321,7 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
                               )}
                               <Badge 
                                 variant="outline" 
-                                className={`${getStatusColor(transaction.status)} text-xs`}
+                                className={`${getStatusColor(transaction.status)} text-xs h-5`}
                               >
                                 {transaction.status}
                               </Badge>
@@ -330,7 +330,7 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
                         </div>
                         <div className="flex-shrink-0 text-right">
                           <p
-                            className={`text-lg font-bold tabular-nums ${
+                            className={`text-base font-bold tabular-nums ${
                               isPositive ? 'text-teal' : 'text-destructive'
                             }`}
                           >
