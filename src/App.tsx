@@ -210,8 +210,8 @@ function App() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto flex">
-        <aside className="hidden lg:block w-64 border-r min-h-[calc(100vh-73px)] sticky top-[73px]">
+      <div className="max-w-7xl mx-auto flex min-h-[calc(100vh-73px)]">
+        <aside className="hidden lg:block w-64 border-r h-[calc(100vh-73px)] sticky top-[73px] overflow-y-auto">
           <nav className="p-4 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon
@@ -235,7 +235,7 @@ function App() {
           </nav>
         </aside>
 
-        <main className="flex-1 p-6 lg:p-8">
+        <main className="flex-1 p-6 lg:p-8 pb-24 lg:pb-8 overflow-y-auto">
           {currentView === 'dashboard' && (
             <DashboardView
               stats={stats}
@@ -287,7 +287,7 @@ function App() {
         </main>
       </div>
 
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 border-t bg-card">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 safe-area-bottom">
         <nav className="flex items-center justify-around p-2">
           {navItems.slice(0, 6).map((item) => {
             const Icon = item.icon

@@ -224,7 +224,6 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
           xAxisKey="month"
           title="Member Trends"
           description="Six-month membership growth and pending applications"
-          height={280}
           loading={loading}
         />
 
@@ -236,7 +235,6 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
           xAxisKey="type"
           title="Revenue Sources"
           description="YTD revenue breakdown by category"
-          height={280}
           loading={loading}
         />
       </div>

@@ -136,8 +136,8 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ChartBar size={24} weight="duotone" />
             Create Custom Report
@@ -147,7 +147,7 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-6 overflow-y-auto pr-2">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="report-name">Report Name</Label>
@@ -244,7 +244,7 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
           <div className="space-y-4">
             <div>
               <Label className="mb-2 block">Selected Columns ({selectedColumns.length})</Label>
-              <Card className="p-4 min-h-[200px] max-h-[300px] overflow-y-auto">
+              <Card className="p-4 min-h-[200px] max-h-[240px] overflow-y-auto">
                 {selectedColumns.length === 0 ? (
                   <div className="text-center text-muted-foreground text-sm py-8">
                     <TableIcon size={32} className="mx-auto mb-2 opacity-50" />
@@ -294,7 +294,7 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
 
             <div>
               <Label className="mb-2 block">Available Fields</Label>
-              <ScrollArea className="h-[300px] rounded-lg border">
+              <ScrollArea className="h-[280px] rounded-lg border">
                 <div className="p-4 space-y-4">
                   {Object.entries(groupedFields).map(([categoryName, fields]) => (
                     <div key={categoryName}>
@@ -324,7 +324,7 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        <div className="flex justify-end gap-2 pt-4 border-t shrink-0">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>

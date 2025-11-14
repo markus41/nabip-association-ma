@@ -244,7 +244,6 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
               xAxisKey="month"
               title="Member Growth Trend"
               description="Track membership growth and renewal patterns over time"
-              height={320}
               loading={loading}
             />
 
@@ -258,7 +257,6 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
               xAxisKey="month"
               title="Revenue by Source"
               description="Revenue breakdown across different income streams"
-              height={320}
               stacked
               loading={loading}
             />
@@ -271,7 +269,6 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
               nameKey="type"
               title="Membership Distribution"
               description="Current member breakdown by membership type"
-              height={320}
               loading={loading}
             />
 
@@ -283,7 +280,6 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
               xAxisKey="chapter"
               title="Top Chapters by Revenue"
               description="Highest performing chapters by revenue generation"
-              height={320}
               loading={loading}
             />
           </div>
@@ -298,7 +294,6 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
             xAxisKey="month"
             title="Member Engagement Metrics"
             description="Track member participation across different touchpoints"
-            height={320}
             loading={loading}
           />
         </TabsContent>
@@ -430,13 +425,13 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
       </Tabs>
 
       <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedReport?.name}</DialogTitle>
             <DialogDescription>Report details and configuration</DialogDescription>
           </DialogHeader>
           {selectedReport && (
-            <div className="space-y-6">
+            <div className="space-y-6 overflow-y-auto pr-2">
               <div>
                 <Badge variant="outline" className="capitalize mb-3">
                   {selectedReport.category}
@@ -521,7 +516,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 sticky bottom-0 bg-background pt-4">
                 <Button className="flex-1" onClick={() => handleRunReport(selectedReport)}>
                   <Play className="mr-2" size={18} />
                   Run Report
