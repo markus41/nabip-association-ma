@@ -63,41 +63,160 @@ export function generateMembers(count: number): Member[] {
 }
 
 export function generateChapters(): Chapter[] {
-  const states = ['California', 'Texas', 'Florida', 'New York', 'Illinois', 'Pennsylvania', 'Ohio', 'Georgia', 'North Carolina', 'Michigan']
-  const chapters: Chapter[] = [
-    {
-      id: 'chapter-national',
-      name: 'NABIP National',
-      type: 'national',
-      region: 'National',
-      memberCount: 20000,
-      activeEventsCount: 12
-    }
+  const nabipStateChapters = [
+    { name: 'Alabama', abbr: 'AL', website: 'https://www.alnabip.com', localChapters: ['Birmingham', 'Mobile', 'Montgomery'] },
+    { name: 'Arizona', abbr: 'AZ', website: 'https://www.aznabip.org', localChapters: ['Phoenix', 'Tucson'] },
+    { name: 'Arkansas', abbr: 'AR', website: 'https://www.arnabip.com', localChapters: ['Little Rock', 'Northwest Arkansas'] },
+    { name: 'California', abbr: 'CA', website: 'https://www.canabip.org', localChapters: ['Los Angeles', 'San Diego', 'Bay Area', 'Sacramento', 'Orange County'] },
+    { name: 'Colorado', abbr: 'CO', website: 'https://www.conabip.org', localChapters: ['Denver', 'Colorado Springs', 'Boulder'] },
+    { name: 'Connecticut', abbr: 'CT', website: 'https://www.ctnabip.org', localChapters: ['Hartford', 'New Haven'] },
+    { name: 'Delaware', abbr: 'DE', website: 'https://www.denabip.org', localChapters: ['Wilmington'] },
+    { name: 'Florida', abbr: 'FL', website: 'https://www.flnabip.org', localChapters: ['Miami', 'Tampa', 'Orlando', 'Jacksonville', 'Tallahassee'] },
+    { name: 'Georgia', abbr: 'GA', website: 'https://www.ganabip.org', localChapters: ['Atlanta', 'Savannah', 'Augusta', 'Columbus'] },
+    { name: 'Hawaii', abbr: 'HI', website: 'https://www.hinabip.org', localChapters: ['Honolulu'] },
+    { name: 'Idaho', abbr: 'ID', website: 'https://www.idnabip.org', localChapters: ['Boise'] },
+    { name: 'Illinois', abbr: 'IL', website: 'https://www.ilnabip.org', localChapters: ['Chicago', 'Springfield', 'Rockford'] },
+    { name: 'Indiana', abbr: 'IN', website: 'https://www.innabip.org', localChapters: ['Indianapolis', 'Fort Wayne'] },
+    { name: 'Iowa', abbr: 'IA', website: 'https://www.ianabip.org', localChapters: ['Des Moines', 'Cedar Rapids'] },
+    { name: 'Kansas', abbr: 'KS', website: 'https://www.ksnabip.org', localChapters: ['Wichita', 'Kansas City'] },
+    { name: 'Kentucky', abbr: 'KY', website: 'https://www.kynabip.org', localChapters: ['Louisville', 'Lexington'] },
+    { name: 'Louisiana', abbr: 'LA', website: 'https://www.lanabip.org', localChapters: ['New Orleans', 'Baton Rouge'] },
+    { name: 'Maine', abbr: 'ME', website: 'https://www.menabip.org', localChapters: ['Portland'] },
+    { name: 'Maryland', abbr: 'MD', website: 'https://www.mdnabip.org', localChapters: ['Baltimore', 'Annapolis'] },
+    { name: 'Massachusetts', abbr: 'MA', website: 'https://www.manabip.org', localChapters: ['Boston', 'Worcester'] },
+    { name: 'Michigan', abbr: 'MI', website: 'https://www.minabip.org', localChapters: ['Detroit', 'Grand Rapids', 'Ann Arbor'] },
+    { name: 'Minnesota', abbr: 'MN', website: 'https://www.mnnabip.org', localChapters: ['Minneapolis', 'St. Paul'] },
+    { name: 'Mississippi', abbr: 'MS', website: 'https://www.msnabip.org', localChapters: ['Jackson'] },
+    { name: 'Missouri', abbr: 'MO', website: 'https://www.monabip.org', localChapters: ['Kansas City', 'St. Louis', 'Springfield'] },
+    { name: 'Montana', abbr: 'MT', website: 'https://www.mtnabip.org', localChapters: ['Billings'] },
+    { name: 'Nebraska', abbr: 'NE', website: 'https://www.nenabip.org', localChapters: ['Omaha', 'Lincoln'] },
+    { name: 'Nevada', abbr: 'NV', website: 'https://www.nvnabip.org', localChapters: ['Las Vegas', 'Reno'] },
+    { name: 'New Hampshire', abbr: 'NH', website: 'https://www.nhnabip.org', localChapters: ['Manchester'] },
+    { name: 'New Jersey', abbr: 'NJ', website: 'https://www.njnabip.org', localChapters: ['Newark', 'Jersey City'] },
+    { name: 'New Mexico', abbr: 'NM', website: 'https://www.nmnabip.org', localChapters: ['Albuquerque'] },
+    { name: 'New York', abbr: 'NY', website: 'https://www.nynabip.org', localChapters: ['New York City', 'Buffalo', 'Rochester', 'Syracuse', 'Albany'] },
+    { name: 'North Carolina', abbr: 'NC', website: 'https://www.ncnabip.org', localChapters: ['Charlotte', 'Raleigh', 'Greensboro'] },
+    { name: 'North Dakota', abbr: 'ND', website: 'https://www.ndnabip.org', localChapters: ['Fargo'] },
+    { name: 'Ohio', abbr: 'OH', website: 'https://www.ohnabip.org', localChapters: ['Columbus', 'Cleveland', 'Cincinnati', 'Toledo'] },
+    { name: 'Oklahoma', abbr: 'OK', website: 'https://www.oknabip.org', localChapters: ['Oklahoma City', 'Tulsa'] },
+    { name: 'Oregon', abbr: 'OR', website: 'https://www.ornabip.org', localChapters: ['Portland', 'Eugene'] },
+    { name: 'Pennsylvania', abbr: 'PA', website: 'https://www.panabip.org', localChapters: ['Philadelphia', 'Pittsburgh', 'Harrisburg'] },
+    { name: 'Rhode Island', abbr: 'RI', website: 'https://www.rinabip.org', localChapters: ['Providence'] },
+    { name: 'South Carolina', abbr: 'SC', website: 'https://www.scnabip.org', localChapters: ['Charleston', 'Columbia'] },
+    { name: 'South Dakota', abbr: 'SD', website: 'https://www.sdnabip.org', localChapters: ['Sioux Falls'] },
+    { name: 'Tennessee', abbr: 'TN', website: 'https://www.tnnabip.org', localChapters: ['Nashville', 'Memphis', 'Knoxville'] },
+    { name: 'Texas', abbr: 'TX', website: 'https://www.txnabip.org', localChapters: ['Houston', 'Dallas', 'Austin', 'San Antonio', 'Fort Worth', 'El Paso'] },
+    { name: 'Utah', abbr: 'UT', website: 'https://www.utnabip.org', localChapters: ['Salt Lake City'] },
+    { name: 'Vermont', abbr: 'VT', website: 'https://www.vtnabip.org', localChapters: ['Burlington'] },
+    { name: 'Virginia', abbr: 'VA', website: 'https://www.vanabip.org', localChapters: ['Richmond', 'Norfolk', 'Arlington'] },
+    { name: 'Washington', abbr: 'WA', website: 'https://www.wanabip.org', localChapters: ['Seattle', 'Spokane', 'Tacoma'] },
+    { name: 'West Virginia', abbr: 'WV', website: 'https://www.wvnabip.org', localChapters: ['Charleston'] },
+    { name: 'Wisconsin', abbr: 'WI', website: 'https://www.winabip.org', localChapters: ['Milwaukee', 'Madison'] },
+    { name: 'Wyoming', abbr: 'WY', website: 'https://www.wynabip.org', localChapters: ['Cheyenne'] }
   ]
   
-  states.forEach((state, index) => {
+  const chapters: Chapter[] = []
+  
+  const nationalChapter: Chapter = {
+    id: 'chapter-national',
+    name: 'NABIP National',
+    type: 'national',
+    region: 'United States',
+    memberCount: 17000,
+    activeEventsCount: 15,
+    websiteUrl: 'https://www.nabip.org',
+    contactEmail: 'info@nabip.org',
+    phone: '(202) 595-0787',
+    president: 'Janet Stokes Trautwein',
+    established: '1929',
+    description: 'The National Association of Benefits and Insurance Professionals (NABIP) is the premier organization serving the health insurance, employee benefits, and advisory community. Founded in 1929, NABIP has a proud history of advocacy and education.',
+    meetingSchedule: 'Annual Conference held each year',
+    leadership: [
+      { id: 'nl-1', name: 'Janet Stokes Trautwein', role: 'CEO', email: 'jtrautwein@nabip.org' },
+      { id: 'nl-2', name: 'Fred Hunt', role: 'National President', email: 'president@nabip.org' }
+    ]
+  }
+  chapters.push(nationalChapter)
+  
+  nabipStateChapters.forEach((stateData, stateIndex) => {
+    const memberCount = Math.floor(Math.random() * 800) + 200
     const stateChapter: Chapter = {
-      id: `chapter-state-${index + 1}`,
-      name: `NABIP ${state}`,
+      id: `chapter-state-${stateData.abbr.toLowerCase()}`,
+      name: `NABIP ${stateData.name}`,
       type: 'state',
       parentChapterId: 'chapter-national',
-      region: state,
-      memberCount: Math.floor(Math.random() * 2000) + 500,
-      activeEventsCount: Math.floor(Math.random() * 5) + 1
+      state: stateData.name,
+      region: stateData.name,
+      memberCount,
+      activeEventsCount: Math.floor(Math.random() * 8) + 2,
+      websiteUrl: stateData.website,
+      contactEmail: `info@${stateData.abbr.toLowerCase()}nabip.org`,
+      phone: `(${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+      president: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
+      established: `${1950 + Math.floor(Math.random() * 60)}`,
+      description: `The ${stateData.name} chapter of NABIP serves health insurance professionals throughout the state, providing education, networking, and advocacy resources.`,
+      meetingSchedule: 'Monthly chapter meetings, quarterly networking events',
+      leadership: [
+        { 
+          id: `sl-${stateIndex}-1`, 
+          name: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`, 
+          role: 'Chapter President',
+          email: `president@${stateData.abbr.toLowerCase()}nabip.org`
+        },
+        { 
+          id: `sl-${stateIndex}-2`, 
+          name: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`, 
+          role: 'Vice President',
+          email: `vp@${stateData.abbr.toLowerCase()}nabip.org`
+        }
+      ],
+      recentNews: [
+        {
+          id: `sn-${stateIndex}-1`,
+          title: 'Upcoming Legislative Session Planning',
+          date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+          excerpt: 'Chapter leadership prepares for state legislative advocacy efforts.'
+        }
+      ]
     }
     chapters.push(stateChapter)
     
-    for (let i = 0; i < 3; i++) {
+    stateData.localChapters.forEach((city, cityIndex) => {
       chapters.push({
-        id: `chapter-local-${index * 3 + i + 1}`,
-        name: `${state} Local Chapter ${i + 1}`,
+        id: `chapter-local-${stateData.abbr.toLowerCase()}-${cityIndex + 1}`,
+        name: `NABIP ${city}`,
         type: 'local',
         parentChapterId: stateChapter.id,
-        region: state,
-        memberCount: Math.floor(Math.random() * 200) + 50,
-        activeEventsCount: Math.floor(Math.random() * 3)
+        state: stateData.name,
+        city: city,
+        region: `${city}, ${stateData.name}`,
+        memberCount: Math.floor(Math.random() * 150) + 30,
+        activeEventsCount: Math.floor(Math.random() * 4) + 1,
+        contactEmail: `${city.toLowerCase().replace(/\s+/g, '')}@${stateData.abbr.toLowerCase()}nabip.org`,
+        phone: `(${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+        president: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
+        established: `${1960 + Math.floor(Math.random() * 50)}`,
+        description: `The ${city} chapter provides local networking and professional development opportunities for benefits professionals in the ${city} area.`,
+        meetingSchedule: 'Monthly luncheons, quarterly CE events',
+        leadership: [
+          { 
+            id: `ll-${stateIndex}-${cityIndex}-1`, 
+            name: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`, 
+            role: 'Chapter President',
+            email: `president.${city.toLowerCase().replace(/\s+/g, '')}@${stateData.abbr.toLowerCase()}nabip.org`
+          }
+        ],
+        upcomingMeetings: [
+          {
+            id: `lm-${stateIndex}-${cityIndex}-1`,
+            title: 'Monthly Networking Luncheon',
+            date: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+            location: 'Downtown Conference Center',
+            description: 'Join fellow members for networking and education'
+          }
+        ]
       })
-    }
+    })
   })
   
   return chapters

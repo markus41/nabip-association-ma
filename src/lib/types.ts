@@ -64,13 +64,54 @@ export interface Chapter {
   name: string
   type: ChapterType
   parentChapterId?: string
+  state?: string
+  city?: string
   region?: string
   memberCount: number
   activeEventsCount: number
   revenueShare?: number
   websiteUrl?: string
   contactEmail?: string
+  phone?: string
+  president?: string
+  established?: string
   settings?: ChapterSettings
+  description?: string
+  meetingSchedule?: string
+  socialMedia?: {
+    facebook?: string
+    twitter?: string
+    linkedin?: string
+  }
+  leadership?: ChapterLeader[]
+  recentNews?: ChapterNews[]
+  upcomingMeetings?: ChapterMeeting[]
+}
+
+export interface ChapterLeader {
+  id: string
+  name: string
+  role: string
+  email?: string
+  phone?: string
+  bio?: string
+  imageUrl?: string
+}
+
+export interface ChapterNews {
+  id: string
+  title: string
+  date: string
+  excerpt: string
+  content?: string
+}
+
+export interface ChapterMeeting {
+  id: string
+  title: string
+  date: string
+  location: string
+  description?: string
 }
 
 export interface ChapterSettings {
