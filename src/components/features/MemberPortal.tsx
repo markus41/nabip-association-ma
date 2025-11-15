@@ -21,6 +21,7 @@ import {
 import type { Member, Credential } from '@/lib/types'
 import { formatDate } from '@/lib/data-utils'
 import { toast } from 'sonner'
+import { MemberPortalLogin } from './MemberPortalLogin'
 
 interface MemberPortalProps {
   memberId: string
@@ -76,15 +77,19 @@ export function MemberPortal({ memberId }: MemberPortalProps) {
 
   if (!currentMember) {
     return (
-      <Card className="p-12">
-        <div className="text-center">
-          <UserCircle size={64} className="mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-semibold mb-2">Member Not Found</h2>
-          <p className="text-muted-foreground">
-            Please log in to access your member portal.
-          </p>
-        </div>
-      </Card>
+      <MemberPortalLogin
+        onLoginSuccess={(member) => {
+          setCurrentMember(member)
+          toast.success('Welcome back!', {
+            description: `Successfully logged in as ${member.firstName} ${member.lastName}`
+          })
+        }}
+        onForgotPassword={(email) => {
+          toast.info('Password Reset Requested', {
+            description: `Password reset instructions have been sent to ${email}`
+          })
+        }}
+      />
     )
   }
 

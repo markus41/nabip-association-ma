@@ -28,7 +28,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import type { Member, MembershipType, MemberStatus } from '@/lib/types'
+import type { Member, MembershipType, MemberStatus, Chapter } from '@/lib/types'
 import { generateId } from '@/lib/data-utils'
 
 const memberFormSchema = z.object({
@@ -37,7 +37,9 @@ const memberFormSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
   company: z.string().optional(),
+  jobTitle: z.string().optional(),
   memberType: z.enum(['individual', 'organizational', 'student', 'lifetime']),
+  chapterId: z.string().min(1, 'Chapter is required'),
   status: z.enum(['active', 'pending', 'expired', 'suspended', 'grace_period']),
 })
 
@@ -47,12 +49,14 @@ interface AddMemberDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAddMember: (member: Member) => void
+  chapters: Chapter[]
 }
 
 export function AddMemberDialog({
   open,
   onOpenChange,
   onAddMember,
+  chapters,
 }: AddMemberDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -64,7 +68,9 @@ export function AddMemberDialog({
       email: '',
       phone: '',
       company: '',
+      jobTitle: '',
       memberType: 'individual',
+      chapterId: chapters.length > 0 ? chapters[0].id : '',
       status: 'pending',
     },
   })
@@ -83,9 +89,10 @@ export function AddMemberDialog({
         email: values.email,
         phone: values.phone || undefined,
         company: values.company || undefined,
+        jobTitle: values.jobTitle || undefined,
         memberType: values.memberType,
         status: values.status,
-        chapterId: 'chapter-1',
+        chapterId: values.chapterId,
         joinedDate: now.toISOString(),
         expiryDate: expiryDate.toISOString(),
         engagementScore: 0,
@@ -199,6 +206,50 @@ export function AddMemberDialog({
                     <FormControl>
                       <Input placeholder="ABC Insurance Group" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="jobTitle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Job Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Insurance Agent" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="chapterId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Chapter *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select chapter" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {chapters.map((chapter) => (
+                          <SelectItem key={chapter.id} value={chapter.id}>
+                            {chapter.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

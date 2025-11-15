@@ -163,7 +163,7 @@ export const eventInvitationTemplate: EmailTemplate = {
   id: 'tpl-event-001',
   name: 'Event Invitation',
   type: 'event_invitation',
-  subject: 'You\'re Invited: {{eventName}}',
+  subject: "You're Invited: {{eventName}}",
   previewText: 'Join us for an exclusive member event',
   category: 'Events',
   htmlContent: `
@@ -239,7 +239,7 @@ export const eventInvitationTemplate: EmailTemplate = {
 </body>
 </html>
   `,
-  plainTextContent: 'You\'re invited to {{eventName}} on {{eventDate}}...',
+  plainTextContent: "You're invited to {{eventName}} on {{eventDate}}...",
   mergeFields: [
     ...commonMergeFields,
     {

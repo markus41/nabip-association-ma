@@ -1,12 +1,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { useKV } from '@github/spark/hooks'
-import { Role } from '@/lib/rbac/permissions'
+import { supabase } from '@/lib/supabase/client'
+import type { RoleName } from '@/lib/rbac'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export interface User {
   id: string
   email: string
   name: string
-  role: Role
+  role: RoleName
   chapterId?: string // For chapter admins, this is their chapter
   stateChapterId?: string // For state admins, this is their state chapter
 }
@@ -15,73 +16,170 @@ interface AuthContextType {
   user: User | null
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   setUser: (user: User | null) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUserState] = useKV<User | null>('ams-current-user', null)
-  const [isLoading, setIsLoading] = useState(false)
-
-  // Initialize with a default user for demo purposes
-  useEffect(() => {
-    if (!user) {
-      // For demo, we'll set a chapter admin user
-      // In production, this would come from actual authentication
-      const demoUser: User = {
-        id: 'demo-user-1',
-        email: 'chapter.admin@nabip.org',
-        name: 'Jane Smith',
-        role: Role.CHAPTER_ADMIN,
-        chapterId: 'chapter-local-ca-1', // California local chapter
-      }
-      setUserState(demoUser)
+/**
+ * Maps Supabase auth user + member data to application User type
+ */
+async function mapAuthUserToUser(authUser: SupabaseUser): Promise<User | null> {
+  try {
+    if (!authUser.email) {
+      console.error('Auth user has no email')
+      return null
     }
+
+    // Query members table to get member data
+    const { data: member, error } = await supabase
+      .from('members')
+      .select('id, first_name, last_name, email, chapter_id, metadata')
+      .eq('email', authUser.email)
+      .maybeSingle()
+
+    if (error) {
+      console.error('Failed to fetch member data:', error)
+      return null
+    }
+
+    if (!member) {
+      console.error('No member record found for email:', authUser.email)
+      return null
+    }
+
+    // Determine role from metadata or default to 'member'
+    // In production, this would check a roles table or use RLS functions
+    const metadata = member.metadata as Record<string, any> | null
+    let role: RoleName = 'member'
+
+    if (metadata?.role) {
+      role = metadata.role as RoleName
+    } else {
+      // Check if user is an admin using RLS functions
+      const { data: isNationalAdmin } = await supabase.rpc('is_national_admin_member')
+      const { data: isStateAdmin } = await supabase.rpc('is_state_admin_member')
+      const { data: isChapterAdmin } = await supabase.rpc('is_chapter_admin_member', {
+        chapter_id: member.chapter_id || ''
+      })
+
+      if (isNationalAdmin) {
+        role = 'national_admin'
+      } else if (isStateAdmin) {
+        role = 'state_admin'
+      } else if (isChapterAdmin) {
+        role = 'chapter_admin'
+      }
+    }
+
+    // Get chapter info for state/chapter admins
+    let stateChapterId: string | undefined
+    if ((role === 'state_admin' || role === 'chapter_admin') && member.chapter_id) {
+      const { data: chapter } = await supabase
+        .from('chapters')
+        .select('id, type, parent_chapter_id')
+        .eq('id', member.chapter_id)
+        .maybeSingle()
+
+      if (chapter?.type === 'state') {
+        stateChapterId = chapter.id
+      } else if (chapter?.type === 'local' && chapter.parent_chapter_id) {
+        // For local chapter admins, find their state chapter
+        const { data: parentChapter } = await supabase
+          .from('chapters')
+          .select('id, type, parent_chapter_id')
+          .eq('id', chapter.parent_chapter_id)
+          .maybeSingle()
+
+        if (parentChapter?.type === 'state') {
+          stateChapterId = parentChapter.id
+        }
+      }
+    }
+
+    return {
+      id: authUser.id,
+      email: authUser.email,
+      name: `${member.first_name} ${member.last_name}`,
+      role,
+      chapterId: role === 'chapter_admin' ? member.chapter_id || undefined : undefined,
+      stateChapterId,
+    }
+  } catch (error) {
+    console.error('Error mapping auth user to app user:', error)
+    return null
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUserState] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Initialize auth state and set up listener
+  useEffect(() => {
+    // Check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        mapAuthUserToUser(session.user).then(setUserState)
+      }
+      setIsLoading(false)
+    })
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const appUser = await mapAuthUserToUser(session.user)
+        setUserState(appUser)
+      } else {
+        setUserState(null)
+      }
+      setIsLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      // Mock login - in production, this would call an API
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Determine role and chapter based on email for demo
-      let demoUser: User
-      if (email.includes('national')) {
-        demoUser = {
-          id: 'user-national',
-          email,
-          name: 'National Admin',
-          role: Role.NATIONAL_ADMIN,
-        }
-      } else if (email.includes('state')) {
-        demoUser = {
-          id: 'user-state',
-          email,
-          name: 'State Admin',
-          role: Role.STATE_ADMIN,
-          stateChapterId: 'chapter-state-ca',
-        }
-      } else {
-        demoUser = {
-          id: 'user-chapter',
-          email,
-          name: 'Chapter Admin',
-          role: Role.CHAPTER_ADMIN,
-          chapterId: 'chapter-local-ca-1',
-        }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        throw error
       }
-      
-      setUserState(demoUser)
+
+      if (data.user) {
+        const appUser = await mapAuthUserToUser(data.user)
+        setUserState(appUser)
+      }
+    } catch (error) {
+      console.error('Login error:', error)
+      throw error
     } finally {
       setIsLoading(false)
     }
   }
 
-  const logout = () => {
-    setUserState(null)
+  const logout = async () => {
+    setIsLoading(true)
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        throw error
+      }
+      setUserState(null)
+    } catch (error) {
+      console.error('Logout error:', error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const setUser = (newUser: User | null) => {

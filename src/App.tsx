@@ -1,20 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Toaster } from '@/components/ui/sonner'
 import { Button } from '@/components/ui/button'
 import { CommandPalette } from '@/components/features/CommandPalette'
-import { DashboardView } from '@/components/features/DashboardView'
-import { MembersView } from '@/components/features/MembersView'
-import { EventsView } from '@/components/features/EventsView'
-import { EventCreationDialog } from '@/components/features/EventCreationDialog'
-import { EmailCampaignsView } from '@/components/features/EmailCampaignsView'
-import { FinanceView } from '@/components/features/FinanceView'
-import { ChaptersView } from '@/components/features/ChaptersView'
-import { ChapterAdminView } from '@/components/features/ChapterAdminView'
-import { LearningView } from '@/components/features/LearningView'
-import { MemberPortal } from '@/components/features/MemberPortal'
-import { ReportsView } from '@/components/features/ReportsView'
-import { AddMemberDialog } from '@/components/features/AddMemberDialog'
+
+// Lazy load heavy view components for code splitting
+const DashboardView = lazy(() => import('@/components/features/DashboardView'))
+const MembersView = lazy(() => import('@/components/features/MembersView'))
+const EventsView = lazy(() => import('@/components/features/EventsView'))
+const EventCreationDialog = lazy(() => import('@/components/features/EventCreationDialog'))
+const EmailCampaignsView = lazy(() => import('@/components/features/EmailCampaignsView'))
+const FinanceView = lazy(() => import('@/components/features/FinanceView'))
+const ChaptersView = lazy(() => import('@/components/features/ChaptersView'))
+const ChapterAdminView = lazy(() => import('@/components/features/ChapterAdminView'))
+const LearningView = lazy(() => import('@/components/features/LearningView'))
+const MemberPortal = lazy(() => import('@/components/features/MemberPortal'))
+const ReportsView = lazy(() => import('@/components/features/ReportsView'))
+const AddMemberDialog = lazy(() => import('@/components/features/AddMemberDialog'))
 import {
   ChartBar,
   UserCircle,
@@ -43,6 +45,9 @@ import type { EmailCampaign, EmailTemplate } from '@/lib/email-types'
 import { emailTemplates } from '@/lib/email-templates'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
+import { useAuth } from '@/lib/auth/AuthContext'
+import type { RoleName } from '@/lib/rbac'
+// import { RoleSwitcher } from '@/components/features/RoleSwitcher'
 
 type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'chapter-admin' | 'learning' | 'reports' | 'portal'
 
@@ -124,9 +129,9 @@ function App() {
 
   // Redirect chapter admins to their view by default
   useEffect(() => {
-    if (user && user.role === Role.CHAPTER_ADMIN) {
+    if (user && user.role === 'chapter_admin') {
       setCurrentView('chapter-admin')
-    } else if (user && user.role !== Role.CHAPTER_ADMIN && currentView === 'chapter-admin') {
+    } else if (user && user.role !== 'chapter_admin' && currentView === 'chapter-admin') {
       setCurrentView('dashboard')
     }
   }, [user])
@@ -304,25 +309,25 @@ function App() {
   }
 
   // Navigation items based on user role
-  const navItems = user?.role === Role.CHAPTER_ADMIN 
+  const navItems = user?.role === 'chapter_admin'
     ? [
-        { id: 'chapter-admin', label: 'My Chapter', icon: Buildings, roles: [Role.CHAPTER_ADMIN] },
-        { id: 'members', label: 'Members', icon: UserCircle, roles: [Role.CHAPTER_ADMIN] },
-        { id: 'events', label: 'Events', icon: CalendarDots, roles: [Role.CHAPTER_ADMIN] },
-        { id: 'communications', label: 'Communications', icon: EnvelopeSimple, roles: [Role.CHAPTER_ADMIN] },
-        { id: 'reports', label: 'Reports', icon: FileText, roles: [Role.CHAPTER_ADMIN] },
-        { id: 'portal', label: 'My Portal', icon: House, roles: [Role.CHAPTER_ADMIN, Role.MEMBER] }
+        { id: 'chapter-admin', label: 'My Chapter', icon: Buildings, roles: ['chapter_admin'] as RoleName[] },
+        { id: 'members', label: 'Members', icon: UserCircle, roles: ['chapter_admin'] as RoleName[] },
+        { id: 'events', label: 'Events', icon: CalendarDots, roles: ['chapter_admin'] as RoleName[] },
+        { id: 'communications', label: 'Communications', icon: EnvelopeSimple, roles: ['chapter_admin'] as RoleName[] },
+        { id: 'reports', label: 'Reports', icon: FileText, roles: ['chapter_admin'] as RoleName[] },
+        { id: 'portal', label: 'My Portal', icon: House, roles: ['chapter_admin', 'member'] as RoleName[] }
       ]
     : [
-        { id: 'dashboard', label: 'Dashboard', icon: ChartBar, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
-        { id: 'members', label: 'Members', icon: UserCircle, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
-        { id: 'events', label: 'Events', icon: CalendarDots, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
-        { id: 'communications', label: 'Communications', icon: EnvelopeSimple, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
-        { id: 'finance', label: 'Finance', icon: CurrencyDollar, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
-        { id: 'chapters', label: 'Chapters', icon: Buildings, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
-        { id: 'learning', label: 'Learning', icon: GraduationCap, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
-        { id: 'reports', label: 'Reports', icon: FileText, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
-        { id: 'portal', label: 'My Portal', icon: House, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN, Role.MEMBER] }
+        { id: 'dashboard', label: 'Dashboard', icon: ChartBar, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'members', label: 'Members', icon: UserCircle, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'events', label: 'Events', icon: CalendarDots, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'communications', label: 'Communications', icon: EnvelopeSimple, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'finance', label: 'Finance', icon: CurrencyDollar, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'chapters', label: 'Chapters', icon: Buildings, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'learning', label: 'Learning', icon: GraduationCap, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'reports', label: 'Reports', icon: FileText, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'portal', label: 'My Portal', icon: House, roles: ['national_admin', 'state_admin', 'member'] as RoleName[] }
       ]
 
   const upcomingEvents = (events || [])
@@ -340,9 +345,9 @@ function App() {
               <p className="text-xs text-muted-foreground">Association Management System</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
-            <RoleSwitcher />
+            {/* <RoleSwitcher /> */}
             <Button
               variant="outline"
               size="sm"
@@ -498,6 +503,7 @@ function App() {
         open={showAddMemberDialog}
         onOpenChange={setShowAddMemberDialog}
         onAddMember={handleMemberAdded}
+        chapters={chapters || []}
       />
       <EventCreationDialog
         open={showEventCreationDialog}

@@ -297,8 +297,18 @@ export function DataTable<T>({
   const allSelected = selectedKeys.size === data.length && data.length > 0;
   const someSelected = selectedKeys.size > 0 && selectedKeys.size < data.length;
 
+  // Utility to generate width classes
+  const getWidthClass = (width?: string) => {
+    if (!width) return '';
+    // Only allow certain widths, otherwise fallback to inline style
+    if (width.endsWith('px')) return `w-[${width}]`;
+    if (width.endsWith('%')) return `w-[${width}]`;
+    if (width.endsWith('rem')) return `w-[${width}]`;
+    return '';
+  };
+
   return (
-    <div className={cn('relative w-full overflow-auto', className)} style={{ maxHeight }}>
+    <div className={cn('relative w-full overflow-auto', className, maxHeight && `max-h-[${maxHeight}]`)}>
       <table className="w-full border-collapse">
         <thead
           className={cn(
@@ -331,15 +341,17 @@ export function DataTable<T>({
                   column.align === 'right' && 'text-right',
                   column.align !== 'center' && column.align !== 'right' && 'text-left',
                   column.hideOnMobile && 'hidden md:table-cell',
-                  column.sortable && 'cursor-pointer select-none hover:bg-[oklch(0.96_0.01_250)]'
+                  column.sortable && 'cursor-pointer select-none hover:bg-[oklch(0.96_0.01_250)]',
+                  getWidthClass(column.width)
                 )}
-                style={{ width: column.width }}
                 onClick={() => handleSort(column)}
                 aria-sort={
-                  sortState.columnId === column.id
+                  sortState.columnId === column.id && sortState.direction
                     ? sortState.direction === 'asc'
                       ? 'ascending'
-                      : 'descending'
+                      : sortState.direction === 'desc'
+                        ? 'descending'
+                        : undefined
                     : undefined
                 }
               >

@@ -9,7 +9,9 @@
         "build": "tsc -b --noCheck && vite build",
         "lint": "eslint .",
         "optimize": "vite optimize",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "deploy": "npm run build && vercel --prod",
+        "deploy:preview": "npm run build && vercel"
     },
     "dependencies": {
         "@github/spark": "^0.39.0",
@@ -57,9 +59,12 @@
         "d3": "^7.9.0",
         "date-fns": "^3.6.0",
         "embla-carousel-react": "^8.5.2",
+        "file-saver": "^2.0.5",
         "framer-motion": "^12.6.2",
         "idb": "^8.0.3",
         "input-otp": "^1.4.2",
+        "jspdf": "^3.0.3",
+        "jspdf-autotable": "^5.0.2",
         "lucide-react": "^0.484.0",
         "marked": "^15.0.7",
         "next-themes": "^0.4.6",
@@ -85,11 +90,13 @@
         "workbox-routing": "^7.3.0",
         "workbox-strategies": "^7.3.0",
         "workbox-window": "^7.3.0",
+        "xlsx": "^0.18.5",
         "zod": "^3.25.76"
     },
     "devDependencies": {
         "@eslint/js": "^9.21.0",
         "@tailwindcss/postcss": "^4.1.8",
+        "@types/file-saver": "^2.0.7",
         "@types/react": "^19.0.10",
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react": "^4.3.4",
