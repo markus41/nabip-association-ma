@@ -14,9 +14,7 @@ import { ChapterAdminView } from '@/components/features/ChapterAdminView'
 import { LearningView } from '@/components/features/LearningView'
 import { MemberPortal } from '@/components/features/MemberPortal'
 import { ReportsView } from '@/components/features/ReportsView'
-import { RoleSwitcher } from '@/components/features/RoleSwitcher'
-import { useAuth } from '@/lib/auth/AuthContext'
-import { Role } from '@/lib/rbac/permissions'
+import { AddMemberDialog } from '@/components/features/AddMemberDialog'
 import {
   ChartBar,
   UserCircle,
@@ -49,6 +47,7 @@ type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
   const [isLoading, setIsLoading] = useState(true)
+  const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
   const [showEventCreationDialog, setShowEventCreationDialog] = useState(false)
   const { user } = useAuth()
   
@@ -161,9 +160,11 @@ function App() {
   }
 
   const handleAddMember = () => {
-    toast.success('Add Member', {
-      description: 'Member creation dialog would open here.'
-    })
+    setShowAddMemberDialog(true)
+  }
+
+  const handleMemberAdded = (newMember: Member) => {
+    setMembers([...members, newMember])
   }
 
   const handleAddEvent = () => {
@@ -365,6 +366,11 @@ function App() {
       </div>
 
       <CommandPalette onNavigate={handleNavigate} />
+      <AddMemberDialog
+        open={showAddMemberDialog}
+        onOpenChange={setShowAddMemberDialog}
+        onAddMember={handleMemberAdded}
+      />
       <EventCreationDialog
         open={showEventCreationDialog}
         onOpenChange={setShowEventCreationDialog}
