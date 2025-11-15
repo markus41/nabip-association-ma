@@ -7,6 +7,7 @@ import { DashboardView } from '@/components/features/DashboardView'
 import { MembersView } from '@/components/features/MembersView'
 import { EventsView } from '@/components/features/EventsView'
 import { CommunicationsView } from '@/components/features/CommunicationsView'
+import { CreateCampaignModal } from '@/components/features/CreateCampaignModal'
 import { FinanceView } from '@/components/features/FinanceView'
 import { ChaptersView } from '@/components/features/ChaptersView'
 import { LearningView } from '@/components/features/LearningView'
@@ -43,6 +44,7 @@ type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
   const [isLoading, setIsLoading] = useState(true)
+  const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false)
   
   const [members, setMembers] = useKV<Member[]>('ams-members', [])
   const [chapters, setChapters] = useKV<Chapter[]>('ams-chapters', [])
@@ -156,9 +158,13 @@ function App() {
   }
 
   const handleNewCampaign = () => {
-    toast.success('New Campaign', {
-      description: 'Campaign builder would open here.'
-    })
+    setIsCampaignModalOpen(true)
+  }
+
+  const handleCreateCampaign = (newCampaign: Campaign) => {
+    // Add new campaign at the beginning so it appears first in the list
+    const updatedCampaigns = [newCampaign, ...(campaigns || [])]
+    setCampaigns(updatedCampaigns)
   }
 
   const navItems = [
@@ -313,6 +319,11 @@ function App() {
       </div>
 
       <CommandPalette onNavigate={handleNavigate} />
+      <CreateCampaignModal
+        open={isCampaignModalOpen}
+        onOpenChange={setIsCampaignModalOpen}
+        onCreateCampaign={handleCreateCampaign}
+      />
       <Toaster />
     </div>
   )
