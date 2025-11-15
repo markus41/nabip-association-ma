@@ -118,6 +118,45 @@ body:
     validations:
       required: false
 
+  - type: markdown
+    attributes:
+      value: |
+        ## Sub-Feature Request & Sub-Issue Creation
+        Is this feature an "epic" or does it require multiple steps to complete?  
+        Easily break it down here and **create, link, and assign sub-issues** in one place!
+
+        **How to use this section:**
+
+        - List out all sub-features or tasks as a checklist below.
+        - Reference existing issues and pull requests using GitHub’s issue/PR number syntax (e.g. #123, #345).
+        - Assign owners or teams to tasks using `@username` for accountability.
+        - To create a new sub-feature issue based on your checklist, **[click here to open a new pre-filled sub-issue](../../issues/new?template=feature_request.yml&labels=enhancement,sub-feature&title=[Sub-Feature]:&body=Parent+Feature:+{{issue_number}}+%0A)** (auto-adds this parent issue).
+        - Use the checklist to track progress and keep all related sub-tasks linked.
+        - For advanced tracking, see [GitHub docs: Issue dependencies and Epics](https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-an-issue).
+
+        **Example:**
+        - [ ] Sub-feature: Responsive sidebar menu ([Create sub-issue](../../issues/new?template=feature_request.yml&labels=enhancement,sub-feature&title=[Sub-Feature]:&body=Parent+Feature:+{{issue_number}}))
+        - [ ] Blocked by: #789
+        - [x] API backend for search (#345, owner: @backend-team)
+        - [ ] Owner/team: @ui-team
+        - [ ] Keyboard shortcut integration (owner: @markus41)
+        - [ ] Update documentation for new feature once merged (#456)
+
+  - type: textarea
+    id: sub-features
+    attributes:
+      label: Sub-Features & Linked Sub-Issue Tracker
+      description: List all sub-features, sub-issues, dependencies, and task assignments. Use checklists, reference links, and assign owners as needed.
+      placeholder: |
+        - [ ] Sub-feature: Responsive sidebar menu ([Create sub-issue](../../issues/new?template=feature_request.yml&labels=enhancement,sub-feature&title=[Sub-Feature]:&body=Parent+Feature:+{{issue_number}}))
+        - [ ] Blocked by: #123
+        - [ ] Owner/team: @ui-team
+        - [x] API backend for search (#345, owner: @backend-team)
+        - [ ] Keyboard shortcut integration (owner: @markus41)
+        - [ ] Documentation update for new features (#456)
+    validations:
+      required: false
+
   - type: checkboxes
     id: checklist
     attributes:
