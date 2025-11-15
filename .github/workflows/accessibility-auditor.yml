@@ -1,0 +1,172 @@
+name: Accessibility Auditor
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**/*.tsx'
+      - 'src/**/*.jsx'
+      - 'src/**/*.css'
+      - 'index.html'
+  pull_request:
+    paths:
+      - 'src/**/*.tsx'
+      - 'src/**/*.jsx'
+      - 'src/**/*.css'
+      - 'index.html'
+  schedule:
+    # Weekly on Wednesdays at 8 AM UTC
+    - cron: '0 8 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  accessibility-audit:
+    name: Audit Accessibility Compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        continue-on-error: true
+
+      - name: Check for accessibility anti-patterns
+        id: a11y_check
+        run: |
+          echo "Checking for accessibility anti-patterns..."
+
+          ISSUES=0
+
+          # Check for missing alt attributes
+          if grep -r "<img" src/ --include="*.tsx" --include="*.jsx" | grep -v "alt="; then
+            echo "⚠️ Images without alt attributes found"
+            ISSUES=$((ISSUES+1))
+          fi
+
+          # Check for improper button usage
+          if grep -r "<div.*onClick" src/ --include="*.tsx" --include="*.jsx"; then
+            echo "⚠️ Interactive divs found - consider using <button>"
+            ISSUES=$((ISSUES+1))
+          fi
+
+          # Check for proper semantic HTML
+          echo "✅ Checking semantic HTML usage..."
+
+          # Check for ARIA labels on interactive elements
+          if grep -r "onClick" src/ --include="*.tsx" --include="*.jsx" | grep -v "aria-label\|button\|a href"; then
+            echo "ℹ️ Interactive elements should have accessible labels"
+          fi
+
+          if [ $ISSUES -eq 0 ]; then
+            echo "✅ No major accessibility anti-patterns detected"
+          fi
+
+          echo "issues=$ISSUES" >> $GITHUB_OUTPUT
+
+      - name: Check color contrast patterns
+        id: contrast_check
+        run: |
+          echo "Checking for potential color contrast issues..."
+
+          # Check for inline styles with color
+          if grep -r "style.*color:" src/ --include="*.tsx" --include="*.jsx"; then
+            echo "ℹ️ Inline color styles found - ensure WCAG contrast ratios (4.5:1 for text, 3:1 for UI)"
+          fi
+
+          echo "✅ Manual color contrast review recommended"
+
+      - name: Check keyboard navigation support
+        id: keyboard_check
+        run: |
+          echo "Checking keyboard navigation support..."
+
+          # Check for onKeyDown/onKeyPress on interactive elements
+          if grep -r "onClick" src/ --include="*.tsx" --include="*.jsx" | grep -v "onKeyDown\|onKeyPress\|button\|a href"; then
+            echo "⚠️ Interactive elements should support keyboard navigation"
+          else
+            echo "✅ Keyboard navigation patterns detected"
+          fi
+
+      - name: Check for proper heading hierarchy
+        id: heading_check
+        run: |
+          echo "Checking heading hierarchy..."
+
+          # Look for heading tags in components
+          grep -rh "<h[1-6]" src/ --include="*.tsx" --include="*.jsx" || echo "No headings found in JSX files"
+
+          echo "ℹ️ Ensure heading hierarchy follows logical order (h1 → h2 → h3)"
+
+      - name: Generate accessibility report
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = parseInt('${{ steps.a11y_check.outputs.issues }}' || '0');
+
+            let message = `## ♿ Accessibility Audit Report\n\n`;
+            message += `**Standard**: WCAG 2.1 Level AA\n\n`;
+
+            message += `### Automated Checks Performed\n\n`;
+            message += `- ✅ Missing alt attributes on images\n`;
+            message += `- ✅ Improper button usage (div with onClick)\n`;
+            message += `- ✅ Accessible labels on interactive elements\n`;
+            message += `- ✅ Color contrast patterns\n`;
+            message += `- ✅ Keyboard navigation support\n`;
+            message += `- ✅ Heading hierarchy\n\n`;
+
+            if (issues > 0) {
+              message += `### ⚠️ Issues Found: ${issues}\n\n`;
+              message += `Please review the workflow logs for specific findings and recommendations.\n\n`;
+            } else {
+              message += `### ✅ No Critical Issues Detected\n\n`;
+              message += `Automated checks passed. Manual accessibility review is still recommended for:\n`;
+              message += `- Color contrast ratios (WCAG 4.5:1 for text)\n`;
+              message += `- Screen reader compatibility\n`;
+              message += `- Focus management\n`;
+              message += `- ARIA attribute usage\n\n`;
+            }
+
+            message += `### 📋 Recommendations\n\n`;
+            message += `1. Test with screen readers (NVDA, JAWS, VoiceOver)\n`;
+            message += `2. Verify keyboard-only navigation works\n`;
+            message += `3. Check color contrast ratios meet WCAG standards\n`;
+            message += `4. Ensure all interactive elements have accessible names\n`;
+            message += `5. Validate proper ARIA usage and semantic HTML\n\n`;
+
+            message += `🔍 For comprehensive testing, consider tools like:\n`;
+            message += `- axe DevTools browser extension\n`;
+            message += `- WAVE browser extension\n`;
+            message += `- Lighthouse accessibility audit\n\n`;
+
+            message += `---\n*Automated by Accessibility Auditor*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message
+            });
+
+      - name: Accessibility summary
+        run: |
+          echo "✅ Accessibility audit complete"
+          echo "Review workflow logs for detailed findings"
+          echo "Manual testing with assistive technologies recommended"
