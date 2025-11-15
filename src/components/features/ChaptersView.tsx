@@ -4,16 +4,20 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Buildings, Users, CalendarDots, MapPin, Plus, Table as TableIcon } from '@phosphor-icons/react'
 import { ChaptersGrid } from './ChaptersGrid'
-import type { Chapter } from '@/lib/types'
+import { ChapterDetail } from './ChapterDetail'
+import type { Chapter, Member, Event } from '@/lib/types'
 
 interface ChaptersViewProps {
   chapters: Chapter[]
+  members?: Member[]
+  events?: Event[]
   loading?: boolean
 }
 
-export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
+export function ChaptersView({ chapters, members = [], events = [], loading }: ChaptersViewProps) {
   const [viewMode, setViewMode] = useState<'cards' | 'grid'>('cards')
   const [selectedType, setSelectedType] = useState<string>('all')
+  const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null)
 
   const hierarchicalChapters = useMemo(() => {
     const national = chapters.filter(c => c.type === 'national')
@@ -57,6 +61,19 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
       fastestGrowing
     }
   }, [chapters])
+
+  if (selectedChapter) {
+    return (
+      <ChapterDetail
+        chapter={selectedChapter}
+        allChapters={chapters}
+        members={members}
+        events={events}
+        onBack={() => setSelectedChapter(null)}
+        onNavigateToChapter={(chapter) => setSelectedChapter(chapter)}
+      />
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -260,6 +277,7 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
                       <Card
                         key={chapter.id}
                         className="p-6 hover:shadow-lg transition-all cursor-pointer group"
+                        onClick={() => setSelectedChapter(chapter)}
                       >
                         <div className="space-y-4">
                           <div className="flex items-start justify-between gap-2">
@@ -368,6 +386,7 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
                         <Card
                           key={chapter.id}
                           className="p-6 hover:shadow-lg transition-all cursor-pointer group"
+                          onClick={() => setSelectedChapter(chapter)}
                         >
                           <div className="space-y-4">
                             <div className="flex items-start justify-between gap-2">
@@ -457,6 +476,7 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
                           <Card
                             key={chapter.id}
                             className="p-6 hover:shadow-lg transition-all cursor-pointer group"
+                            onClick={() => setSelectedChapter(chapter)}
                           >
                             <div className="space-y-4">
                               <div className="flex items-start justify-between gap-2">

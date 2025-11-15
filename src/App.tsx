@@ -269,7 +269,7 @@ function App() {
             <FinanceView transactions={transactions || []} loading={isLoading} />
           )}
           {currentView === 'chapters' && (
-            <ChaptersView chapters={chapters || []} loading={isLoading} />
+            <ChaptersView chapters={chapters || []} members={members || []} events={events || []} loading={isLoading} />
           )}
           {currentView === 'learning' && (
             <LearningView
