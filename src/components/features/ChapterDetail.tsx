@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { DirectMessageDialog } from './DirectMessageDialog'
 import { 
   Buildings, 
   Users, 
@@ -14,9 +15,10 @@ import {
   ArrowLeft,
   UserCircle,
   Newspaper,
-  ChartLine
+  ChartLine,
+  PaperPlaneRight
 } from '@phosphor-icons/react'
-import type { Chapter, Event, Member } from '@/lib/types'
+import type { Chapter, Event, Member, ChapterLeader } from '@/lib/types'
 
 interface ChapterDetailProps {
   chapter: Chapter
@@ -25,9 +27,12 @@ interface ChapterDetailProps {
   events?: Event[]
   onBack: () => void
   onNavigateToChapter?: (chapter: Chapter) => void
+  onSendMessage?: (subject: string, content: string, recipientId: string, recipientName: string, chapterId: string) => void
 }
 
-export function ChapterDetail({ chapter, allChapters, members = [], events = [], onBack, onNavigateToChapter }: ChapterDetailProps) {
+export function ChapterDetail({ chapter, allChapters, members = [], events = [], onBack, onNavigateToChapter, onSendMessage }: ChapterDetailProps) {
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false)
+  const [selectedLeader, setSelectedLeader] = useState<ChapterLeader | null>(null)
   const childChapters = useMemo(() => {
     return allChapters.filter(c => c.parentChapterId === chapter.id).sort((a, b) => a.name.localeCompare(b.name))
   }, [allChapters, chapter.id])
@@ -52,7 +57,19 @@ export function ChapterDetail({ chapter, allChapters, members = [], events = [],
   const activeMembers = chapterMembers.filter(m => m.status === 'active').length
   const memberGrowth = chapterMembers.length > 0 ? ((Math.random() * 20) - 5).toFixed(1) : '0.0'
 
+  const handleMessageLeader = (leader: ChapterLeader) => {
+    setSelectedLeader(leader)
+    setMessageDialogOpen(true)
+  }
+
+  const handleSendMessage = (subject: string, content: string, recipientId: string, recipientName: string) => {
+    if (onSendMessage) {
+      onSendMessage(subject, content, recipientId, recipientName, chapter.id)
+    }
+  }
+
   return (
+    <>
     <div className="space-y-6">
       <div>
         <Button
@@ -262,16 +279,33 @@ export function ChapterDetail({ chapter, allChapters, members = [], events = [],
               </div>
               <div className="space-y-4">
                 {chapter.leadership.map((leader) => (
-                  <div key={leader.id} className="space-y-1">
-                    <h3 className="font-semibold">{leader.name}</h3>
-                    <p className="text-sm text-muted-foreground">{leader.role}</p>
-                    {leader.email && (
-                      <a 
-                        href={`mailto:${leader.email}`} 
-                        className="text-xs text-primary hover:underline block"
+                  <div key={leader.id} className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <h3 className="font-semibold">{leader.name}</h3>
+                        <p className="text-sm text-muted-foreground">{leader.role}</p>
+                        {leader.email && (
+                          <a 
+                            href={`mailto:${leader.email}`} 
+                            className="text-xs text-primary hover:underline block"
+                          >
+                            {leader.email}
+                          </a>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleMessageLeader(leader)}
+                        className="shrink-0"
+                        aria-label={`Send message to ${leader.name}`}
                       >
-                        {leader.email}
-                      </a>
+                        <PaperPlaneRight size={14} className="mr-1.5" weight="bold" />
+                        Message
+                      </Button>
+                    </div>
+                    {leader.bio && (
+                      <p className="text-xs text-muted-foreground">{leader.bio}</p>
                     )}
                   </div>
                 ))}
@@ -419,5 +453,15 @@ export function ChapterDetail({ chapter, allChapters, members = [], events = [],
         </Card>
       )}
     </div>
+    {selectedLeader && (
+      <DirectMessageDialog
+        open={messageDialogOpen}
+        onOpenChange={setMessageDialogOpen}
+        recipient={selectedLeader}
+        chapterName={chapter.name}
+        onSend={handleSendMessage}
+      />
+    )}
+    </>
   )
 }

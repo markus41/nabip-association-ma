@@ -369,3 +369,40 @@ export interface AuditLog {
   timestamp: string
   ipAddress?: string
 }
+
+export type MessageStatus = 'draft' | 'sent' | 'read' | 'archived'
+
+export interface Message {
+  id: string
+  fromUserId: string
+  fromUserName: string
+  toUserId: string
+  toUserName: string
+  subject: string
+  content: string
+  status: MessageStatus
+  sentDate: string
+  readDate?: string
+  chapterId?: string
+  threadId?: string
+  replyToId?: string
+  attachments?: MessageAttachment[]
+}
+
+export interface MessageAttachment {
+  id: string
+  name: string
+  url: string
+  size: number
+  type: string
+}
+
+export interface MessageThread {
+  id: string
+  subject: string
+  participants: string[]
+  lastMessageDate: string
+  messageCount: number
+  unreadCount: number
+  chapterId?: string
+}

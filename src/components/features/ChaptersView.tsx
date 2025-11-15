@@ -14,9 +14,10 @@ interface ChaptersViewProps {
   members?: Member[]
   events?: Event[]
   loading?: boolean
+  onSendMessage?: (subject: string, content: string, recipientId: string, recipientName: string, chapterId: string) => void
 }
 
-export function ChaptersView({ chapters, members = [], events = [], loading }: ChaptersViewProps) {
+export function ChaptersView({ chapters, members = [], events = [], loading, onSendMessage }: ChaptersViewProps) {
   const [viewMode, setViewMode] = useState<'cards' | 'grid'>('cards')
   const [selectedType, setSelectedType] = useState<string>('all')
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null)
@@ -91,6 +92,7 @@ export function ChaptersView({ chapters, members = [], events = [], loading }: C
         events={events}
         onBack={() => setSelectedChapter(null)}
         onNavigateToChapter={(chapter) => setSelectedChapter(chapter)}
+        onSendMessage={onSendMessage}
       />
     )
   }

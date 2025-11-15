@@ -40,7 +40,7 @@ import {
   generateReports,
   calculateDashboardStats
 } from '@/lib/data-utils'
-import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report } from '@/lib/types'
+import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report, Message } from '@/lib/types'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -60,6 +60,7 @@ function App() {
   const [courses, setCourses] = useKV<Course[]>('ams-courses', [])
   const [enrollments, setEnrollments] = useKV<Enrollment[]>('ams-enrollments', [])
   const [reports, setReports] = useKV<Report[]>('ams-reports', [])
+  const [messages, setMessages] = useKV<Message[]>('ams-messages', [])
   
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -191,6 +192,27 @@ function App() {
     })
   }
 
+  const handleSendMessage = (subject: string, content: string, recipientId: string, recipientName: string, chapterId: string) => {
+    const newMessage: Message = {
+      id: uuidv4(),
+      fromUserId: user?.id || 'current-user',
+      fromUserName: user?.name || 'Current User',
+      toUserId: recipientId,
+      toUserName: recipientName,
+      subject,
+      content,
+      status: 'sent',
+      sentDate: new Date().toISOString(),
+      chapterId
+    }
+
+    setMessages([...messages, newMessage])
+    
+    toast.success('Message Sent', {
+      description: `Your message to ${recipientName} has been sent successfully.`
+    })
+  }
+
   // Navigation items based on user role
   const navItems = user?.role === Role.CHAPTER_ADMIN 
     ? [
@@ -311,7 +333,13 @@ function App() {
             <FinanceView transactions={transactions || []} loading={isLoading} />
           )}
           {currentView === 'chapters' && (
-            <ChaptersView chapters={chapters || []} members={members || []} events={events || []} loading={isLoading} />
+            <ChaptersView 
+              chapters={chapters || []} 
+              members={members || []} 
+              events={events || []} 
+              loading={isLoading} 
+              onSendMessage={handleSendMessage}
+            />
           )}
           {currentView === 'chapter-admin' && (
             <ChapterAdminView
