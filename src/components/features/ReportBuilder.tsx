@@ -251,40 +251,45 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
                     No columns selected yet
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {selectedColumns.map((col) => (
                       <div
                         key={col.field}
-                        className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
+                        className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border/50"
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{col.label}</p>
-                          <p className="text-xs text-muted-foreground">{col.category}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{col.category}</p>
+                          {col.type === 'number' && (
+                            <div className="mt-2">
+                              <Label className="text-xs text-muted-foreground mb-1.5 block">
+                                Aggregation
+                              </Label>
+                              <Select
+                                value={col.aggregate}
+                                onValueChange={(value) => handleUpdateAggregate(col.field, value)}
+                              >
+                                <SelectTrigger className="w-full h-9 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {aggregateFunctions.map((fn) => (
+                                    <SelectItem key={fn.value} value={fn.value} className="text-sm">
+                                      {fn.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                         </div>
-                        {col.type === 'number' && (
-                          <Select
-                            value={col.aggregate}
-                            onValueChange={(value) => handleUpdateAggregate(col.field, value)}
-                          >
-                            <SelectTrigger className="w-[100px] h-8 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {aggregateFunctions.map((fn) => (
-                                <SelectItem key={fn.value} value={fn.value}>
-                                  {fn.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => handleRemoveColumn(col.field)}
-                          className="shrink-0 h-8 w-8 p-0"
+                          className="shrink-0 h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
                         >
-                          <X size={14} />
+                          <X size={16} />
                         </Button>
                       </div>
                     ))}
