@@ -1,0 +1,319 @@
+name: Claude Code - Ultimate Edition
+on:
+  # Respond to @claude mentions in various contexts
+  issue_comment:
+    types: [created, edited]
+  pull_request_review_comment:
+    types: [created, edited]
+  pull_request_review:
+    types: [submitted]
+  
+  # Auto-engage on new issues and PRs
+  issues:
+    types: [opened, assigned, labeled, reopened]
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+  
+  # Manual trigger for maintenance tasks
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task for Claude to perform'
+        required: true
+        type: choice
+        options:
+          - 'Triage all open issues'
+          - 'Review stale PRs'
+          - 'Update documentation'
+          - 'Generate project status report'
+          - 'Analyze code quality'
+          - 'Check for security issues'
+      scope:
+        description: 'Scope of operation'
+        required: false
+        default: 'all'
+
+jobs:
+  # Main Claude Code job for @claude mentions and PR reviews
+  claude-respond:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && github.event.action == 'opened' && contains(github.event.issue.body, '@claude')) ||
+      (github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write          # Allow Claude to commit changes
+      pull-requests: write     # Allow Claude to create/update PRs
+      issues: write            # Allow Claude to manage issues
+      id-token: write          # Required for authentication
+      actions: read            # Read CI/CD results
+      checks: write            # Update check runs
+      discussions: write       # Participate in discussions
+      packages: read           # Read package info
+      statuses: write          # Update commit statuses
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better context
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+      
+      - name: Setup Claude context
+        id: context
+        run: |
+          # Gather comprehensive context about the repository
+          echo "Collecting repository context..."
+          
+          # Count open issues by priority
+          echo "open_critical_issues=$(gh issue list --label critical --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+          echo "open_high_issues=$(gh issue list --label high-priority --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+          echo "open_medium_issues=$(gh issue list --label medium-priority --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+          
+          # Get recent activity
+          echo "recent_commits=$(git log --oneline -10 | wc -l)" >> $GITHUB_OUTPUT
+          echo "recent_prs=$(gh pr list --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+          
+          # Project stats
+          echo "total_issues=$(gh issue list --state all --json number | jq 'length')" >> $GITHUB_OUTPUT
+          echo "closed_issues=$(gh issue list --state closed --json number | jq 'length')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+      
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          
+          # Enhanced permissions for full GitHub capabilities
+          additional_permissions: |
+            actions: read
+            checks: write
+            contents: write
+            discussions: write
+            issues: write
+            pull-requests: write
+            statuses: write
+          
+          # Custom prompt based on context
+          prompt: |
+            ${{ github.event_name == 'workflow_dispatch' && format('**Scheduled Task**: {0}', github.event.inputs.task) || '' }}
+            
+            **Repository Context**:
+            - Project: NABIP AMS (Association Management System)
+            - Open Issues: ${{ steps.context.outputs.total_issues }}
+            - Critical Priority: ${{ steps.context.outputs.open_critical_issues }}
+            - High Priority: ${{ steps.context.outputs.open_high_issues }}
+            - Open Pull Requests: ${{ steps.context.outputs.recent_prs }}
+            
+            **Your Capabilities**:
+            - Review and comment on code
+            - Create/update issues and PRs
+            - Suggest fixes and improvements
+            - Update documentation
+            - Analyze code quality and security
+            - Manage labels and milestones
+            - Generate status reports
+            
+            **Project-Specific Knowledge**:
+            - This is a comprehensive AMS platform with 419 tracked issues
+            - Priority #1: Fix core functionality (Add Member, Campaigns, Courses, Events, Reports, Portal Login)
+            - Tech stack: React, Node.js, PostgreSQL
+            - Focus areas: Member management, Chapter management, RBAC, Events, LMS
+            
+            Please provide actionable, specific assistance.
+          
+          # Advanced configuration
+          claude_args: |
+            --allowed-tools Bash(*),Editor(*),Browser(*)
+            --max-iterations 50
+            --model claude-sonnet-4-20250514
+            --verbose
+      
+      - name: Label based on Claude's analysis
+        if: github.event_name == 'issues' && github.event.action == 'opened'
+        run: |
+          # Auto-label new issues based on content analysis
+          ISSUE_BODY="${{ github.event.issue.body }}"
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+          
+          # Add labels based on keywords
+          if echo "$ISSUE_BODY" | grep -qi "member"; then
+            gh issue edit $ISSUE_NUMBER --add-label "members"
+          fi
+          if echo "$ISSUE_BODY" | grep -qi "chapter"; then
+            gh issue edit $ISSUE_NUMBER --add-label "chapters"
+          fi
+          if echo "$ISSUE_BODY" | grep -qi "event"; then
+            gh issue edit $ISSUE_NUMBER --add-label "events"
+          fi
+          if echo "$ISSUE_BODY" | grep -qi "campaign\|email"; then
+            gh issue edit $ISSUE_NUMBER --add-label "campaigns"
+          fi
+          if echo "$ISSUE_BODY" | grep -qi "course\|learning\|lms"; then
+            gh issue edit $ISSUE_NUMBER --add-label "learning"
+          fi
+          if echo "$ISSUE_BODY" | grep -qi "report"; then
+            gh issue edit $ISSUE_NUMBER --add-label "reports"
+          fi
+          if echo "$ISSUE_BODY" | grep -qi "security\|auth\|permission"; then
+            gh issue edit $ISSUE_NUMBER --add-label "security"
+          fi
+          if echo "$ISSUE_BODY" | grep -qi "ui\|ux\|design"; then
+            gh issue edit $ISSUE_NUMBER --add-label "ui/ux"
+          fi
+          if echo "$ISSUE_BODY" | grep -qi "bug\|broken\|not working"; then
+            gh issue edit $ISSUE_NUMBER --add-label "bug"
+          fi
+          if echo "$ISSUE_BODY" | grep -qi "feature\|enhancement"; then
+            gh issue edit $ISSUE_NUMBER --add-label "enhancement"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+  
+  # Automatic PR review by Claude
+  claude-pr-review:
+    if: |
+      github.event_name == 'pull_request' && 
+      github.event.action == 'opened' || 
+      github.event.action == 'ready_for_review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+      statuses: write
+    
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      
+      - name: Get changed files
+        id: changed-files
+        run: |
+          # Get list of changed files for focused review
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}..HEAD | tr '\n' ',' | sed 's/,$//')
+          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "count=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}..HEAD | wc -l)" >> $GITHUB_OUTPUT
+      
+      - name: Claude PR Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
+            checks: write
+            contents: read
+            pull-requests: write
+          prompt: |
+            **Automatic PR Review Request**
+            
+            PR Title: ${{ github.event.pull_request.title }}
+            PR Number: #${{ github.event.pull_request.number }}
+            Author: @${{ github.event.pull_request.user.login }}
+            Changed Files: ${{ steps.changed-files.outputs.count }}
+            
+            **Review Checklist**:
+            ✓ Code quality and best practices
+            ✓ Security vulnerabilities
+            ✓ Performance considerations
+            ✓ Test coverage (if applicable)
+            ✓ Documentation updates needed
+            ✓ Breaking changes
+            ✓ Alignment with NABIP AMS architecture
+            
+            **Context**: This PR is part of the NABIP AMS project with 419 tracked issues.
+            Priority areas: Core functionality fixes, RBAC, Member/Chapter management.
+            
+            Please provide a thorough but constructive review.
+            Focus on actionable feedback and suggest specific improvements.
+            
+            Files changed: ${{ steps.changed-files.outputs.files }}
+          claude_args: |
+            --allowed-tools Bash(gh pr *),Editor(*),Browser(*)
+            --model claude-sonnet-4-20250514
+  
+  # Weekly project health check
+  claude-health-check:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'Generate project status report')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate health metrics
+        id: metrics
+        run: |
+          # Comprehensive project health metrics
+          cat > project-metrics.json << 'EOF'
+          {
+            "issues": {
+              "total": $(gh issue list --state all --json number | jq 'length'),
+              "open": $(gh issue list --state open --json number | jq 'length'),
+              "closed": $(gh issue list --state closed --json number | jq 'length'),
+              "critical": $(gh issue list --label critical --state open --json number | jq 'length'),
+              "high": $(gh issue list --label high-priority --state open --json number | jq 'length'),
+              "blocked": $(gh issue list --label blocked --state open --json number | jq 'length')
+            },
+            "pull_requests": {
+              "open": $(gh pr list --state open --json number | jq 'length'),
+              "merged_this_week": $(gh pr list --state merged --search "merged:>=$(date -d '7 days ago' +%Y-%m-%d)" --json number | jq 'length')
+            },
+            "velocity": {
+              "issues_closed_this_week": $(gh issue list --state closed --search "closed:>=$(date -d '7 days ago' +%Y-%m-%d)" --json number | jq 'length'),
+              "issues_opened_this_week": $(gh issue list --search "created:>=$(date -d '7 days ago' +%Y-%m-%d)" --json number | jq 'length')
+            }
+          }
+          EOF
+          
+          echo "metrics=$(cat project-metrics.json)" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+      
+      - name: Claude Health Analysis
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            contents: write
+            issues: write
+          prompt: |
+            **Weekly Project Health Check**
+            
+            Project: NABIP AMS
+            Date: $(date +%Y-%m-%d)
+            
+            **Metrics**:
+            ${{ steps.metrics.outputs.metrics }}
+            
+            **Tasks**:
+            1. Analyze project health and velocity
+            2. Identify bottlenecks and blockers
+            3. Suggest priority adjustments
+            4. Create a status report issue
+            5. Update project documentation if needed
+            
+            **Focus Areas**:
+            - Are critical issues being addressed?
+            - Is the team making progress on Phase 1 (Core Fixes)?
+            - Are there any concerning trends?
+            - What should leadership know about?
+            
+            Please create a comprehensive status report as a new issue.
+          claude_args: |
+            --allowed-tools Bash(*),Editor(*)
+            --model claude-sonnet-4-20250514
+
