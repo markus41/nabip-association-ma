@@ -14,6 +14,7 @@ import { ChapterAdminView } from '@/components/features/ChapterAdminView'
 import { LearningView } from '@/components/features/LearningView'
 import { MemberPortal } from '@/components/features/MemberPortal'
 import { ReportsView } from '@/components/features/ReportsView'
+import { RoleSwitcher } from '@/components/features/RoleSwitcher'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { Role } from '@/lib/rbac/permissions'
 import {
@@ -124,8 +125,10 @@ function App() {
 
   // Redirect chapter admins to their view by default
   useEffect(() => {
-    if (user && user.role === Role.CHAPTER_ADMIN && currentView === 'dashboard') {
+    if (user && user.role === Role.CHAPTER_ADMIN) {
       setCurrentView('chapter-admin')
+    } else if (user && user.role !== Role.CHAPTER_ADMIN && currentView === 'chapter-admin') {
+      setCurrentView('dashboard')
     }
   }, [user])
 
@@ -226,22 +229,25 @@ function App() {
             </div>
           </div>
           
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden md:flex items-center gap-2"
-            onClick={() => {
-              const event = new KeyboardEvent('keydown', {
-                key: 'k',
-                metaKey: true,
-                bubbles: true
-              })
-              document.dispatchEvent(event)
-            }}
-          >
-            <Command size={14} weight="bold" />
-            <span className="text-muted-foreground">⌘K</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <RoleSwitcher />
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden md:flex items-center gap-2"
+              onClick={() => {
+                const event = new KeyboardEvent('keydown', {
+                  key: 'k',
+                  metaKey: true,
+                  bubbles: true
+                })
+                document.dispatchEvent(event)
+              }}
+            >
+              <Command size={14} weight="bold" />
+              <span className="text-muted-foreground">⌘K</span>
+            </Button>
+          </div>
         </div>
       </header>
 
