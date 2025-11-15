@@ -234,13 +234,48 @@ export function generateEvents(count: number): Event[] {
     'Networking Breakfast',
     'Industry Trends Webinar',
     'Chapter President Meeting',
-    'Certification Prep Course'
+    'Certification Prep Course',
+    'Health Insurance Deep Dive',
+    'ACA Update Workshop',
+    'Small Group Sales Strategy',
+    'Employee Benefits Expo'
   ]
+  
+  const eventTypes = ['webinar', 'in-person', 'hybrid']
   
   for (let i = 0; i < count; i++) {
     const startDate = new Date(Date.now() + Math.random() * 180 * 24 * 60 * 60 * 1000)
     const capacity = Math.floor(Math.random() * 200) + 50
     const registered = Math.floor(Math.random() * capacity * 0.8)
+    const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)]
+    const hasEarlyBird = Math.random() > 0.5
+    const hasCE = Math.random() > 0.4
+    
+    const memberPrice = Math.floor(Math.random() * 100) + 50
+    const nonMemberPrice = memberPrice + Math.floor(Math.random() * 50) + 50
+    
+    const ticketTypes = [
+      {
+        id: generateId(),
+        name: 'Member',
+        price: memberPrice,
+        capacity: Math.floor(capacity * 0.7),
+        sold: Math.floor(registered * 0.7),
+        memberOnly: true,
+        earlyBird: hasEarlyBird,
+        earlyBirdEndDate: hasEarlyBird ? new Date(startDate.getTime() - Math.floor(Math.random() * 14 + 3) * 24 * 60 * 60 * 1000).toISOString() : undefined
+      },
+      {
+        id: generateId(),
+        name: 'Non-Member',
+        price: nonMemberPrice,
+        capacity: Math.floor(capacity * 0.3),
+        sold: Math.floor(registered * 0.3),
+        memberOnly: false,
+        earlyBird: hasEarlyBird,
+        earlyBirdEndDate: hasEarlyBird ? new Date(startDate.getTime() - Math.floor(Math.random() * 14 + 3) * 24 * 60 * 60 * 1000).toISOString() : undefined
+      }
+    ]
     
     events.push({
       id: generateId(),
@@ -252,26 +287,10 @@ export function generateEvents(count: number): Event[] {
       capacity,
       registeredCount: registered,
       status: Math.random() > 0.2 ? 'published' : 'draft',
-      location: Math.random() > 0.3 ? 'Grand Hotel, Downtown' : 'Virtual',
-      virtual: Math.random() > 0.6,
-      ticketTypes: [
-        {
-          id: generateId(),
-          name: 'Member',
-          price: Math.floor(Math.random() * 100) + 50,
-          capacity: Math.floor(capacity * 0.7),
-          sold: Math.floor(registered * 0.7),
-          memberOnly: true
-        },
-        {
-          id: generateId(),
-          name: 'Non-Member',
-          price: Math.floor(Math.random() * 150) + 100,
-          capacity: Math.floor(capacity * 0.3),
-          sold: Math.floor(registered * 0.3),
-          memberOnly: false
-        }
-      ]
+      location: eventType === 'webinar' ? 'Virtual' : eventType === 'hybrid' ? 'Hybrid - Grand Hotel & Online' : 'Grand Hotel, Downtown',
+      virtual: eventType === 'webinar',
+      ceCredits: hasCE ? Math.floor(Math.random() * 5) + 1 : undefined,
+      ticketTypes
     })
   }
   

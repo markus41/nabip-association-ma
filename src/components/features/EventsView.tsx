@@ -17,6 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { 
   CalendarDots, 
   Plus, 
@@ -24,7 +30,15 @@ import {
   MapPin,
   Users,
   Ticket,
-  Video
+  Video,
+  Eye,
+  Link as LinkIcon,
+  EnvelopeSimple,
+  Clock,
+  Medal,
+  CalendarBlank,
+  CheckCircle,
+  WarningCircle
 } from '@phosphor-icons/react'
 import type { Event } from '@/lib/types'
 import { formatDate, formatCurrency, getStatusColor } from '@/lib/data-utils'
@@ -71,6 +85,116 @@ export function EventsView({ events, onAddEvent, loading }: EventsViewProps) {
     toast.success(`Registered for ${event.name}`, {
       description: 'You will receive a confirmation email shortly.'
     })
+  }
+
+  const handleViewDetails = (event: Event, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedEvent(event)
+  }
+
+  const handleCopyLink = (eventId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const link = `${window.location.origin}/events/${eventId}`
+    navigator.clipboard.writeText(link)
+    toast.success('Registration link copied!', {
+      description: 'Share this link with potential attendees.'
+    })
+  }
+
+  const handleEmailAttendees = (eventName: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    toast.success(`Email Attendees`, {
+      description: `Compose email to all ${eventName} attendees.`
+    })
+  }
+
+  const getEventTypeColor = (event: Event) => {
+    if (event.virtual && !event.location.includes('Hybrid')) return 'blue'
+    if (!event.virtual) return 'green'
+    return 'purple'
+  }
+
+  const getDaysUntil = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffTime = date.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
+  const getSmartTags = (event: Event) => {
+    const tags: Array<{ label: string; variant: 'default' | 'success' | 'warning' | 'destructive' }> = []
+    
+    if (event.ceCredits && event.ceCredits > 0) {
+      tags.push({ label: `${event.ceCredits} CE Credits`, variant: 'success' })
+    }
+
+    const earlyBirdTicket = event.ticketTypes.find(t => t.earlyBird && t.earlyBirdEndDate)
+    if (earlyBirdTicket && earlyBirdTicket.earlyBirdEndDate) {
+      const daysUntil = getDaysUntil(earlyBirdTicket.earlyBirdEndDate)
+      if (daysUntil > 0 && daysUntil <= 7) {
+        tags.push({ label: `Early Bird Ends in ${daysUntil} Day${daysUntil !== 1 ? 's' : ''}`, variant: 'warning' })
+      }
+    }
+
+    const capacityPercentage = (event.registeredCount / event.capacity) * 100
+    if (capacityPercentage >= 90) {
+      tags.push({ label: 'Almost Full', variant: 'destructive' })
+    }
+
+    return tags
+  }
+
+  const getMemberPrice = (event: Event) => {
+    const memberTicket = event.ticketTypes.find(t => t.memberOnly || t.name.toLowerCase().includes('member'))
+    return memberTicket ? memberTicket.price : event.ticketTypes[0]?.price || 0
+  }
+
+  const getNonMemberPrice = (event: Event) => {
+    const nonMemberTicket = event.ticketTypes.find(t => !t.memberOnly && t.name.toLowerCase().includes('non-member'))
+    return nonMemberTicket ? nonMemberTicket.price : event.ticketTypes[event.ticketTypes.length - 1]?.price || 0
+  }
+
+  const renderProgressRing = (percentage: number) => {
+    const radius = 20
+    const circumference = 2 * Math.PI * radius
+    const offset = circumference - (percentage / 100) * circumference
+    const color = percentage >= 90 ? '#ef4444' : percentage >= 75 ? '#f59e0b' : '#10b981'
+
+    return (
+      <svg width="48" height="48" className="shrink-0">
+        <circle
+          cx="24"
+          cy="24"
+          r={radius}
+          fill="none"
+          stroke="oklch(0.90 0.01 250)"
+          strokeWidth="4"
+        />
+        <circle
+          cx="24"
+          cy="24"
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="4"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform="rotate(-90 24 24)"
+          style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+        />
+        <text
+          x="24"
+          y="24"
+          textAnchor="middle"
+          dy=".3em"
+          className="text-xs font-semibold fill-foreground"
+        >
+          {Math.round(percentage)}%
+        </text>
+      </svg>
+    )
   }
 
   return (
@@ -183,7 +307,7 @@ export function EventsView({ events, onAddEvent, loading }: EventsViewProps) {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="p-6">
@@ -206,79 +330,210 @@ export function EventsView({ events, onAddEvent, loading }: EventsViewProps) {
         ) : (
           filteredEvents.map((event) => {
             const capacityPercentage = (event.registeredCount / event.capacity) * 100
-            const isNearCapacity = capacityPercentage >= 80
             const isFull = event.registeredCount >= event.capacity
+            const eventTypeColor = getEventTypeColor(event)
+            const smartTags = getSmartTags(event)
+            const memberPrice = getMemberPrice(event)
+            const nonMemberPrice = getNonMemberPrice(event)
+            const hasMemberDiscount = memberPrice < nonMemberPrice
+            const eventDate = new Date(event.startDate)
+            const month = eventDate.toLocaleString('default', { month: 'short' }).toUpperCase()
+            const day = eventDate.getDate()
+
+            const cardBorderColor = eventTypeColor === 'blue' 
+              ? 'hover:border-blue-500/50' 
+              : eventTypeColor === 'green' 
+              ? 'hover:border-green-500/50' 
+              : 'hover:border-purple-500/50'
+
+            const cardBgAccent = eventTypeColor === 'blue'
+              ? 'bg-blue-50'
+              : eventTypeColor === 'green'
+              ? 'bg-green-50'
+              : 'bg-purple-50'
 
             return (
               <Card
                 key={event.id}
-                className="p-6 hover:shadow-lg transition-all cursor-pointer group"
-                onClick={() => setSelectedEvent(event)}
+                className={`group relative overflow-hidden transition-all duration-300 hover:shadow-xl border-2 ${cardBorderColor}`}
               >
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-lg leading-tight group-hover:text-primary transition-colors">
-                      {event.name}
-                    </h3>
-                    <Badge variant="outline" className={getStatusColor(event.status)}>
-                      {event.status}
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <CalendarDots size={16} className="shrink-0" />
-                      <span>{formatDate(event.startDate, true)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {event.virtual ? (
-                        <>
-                          <Video size={16} className="shrink-0" />
-                          <span>Virtual Event</span>
-                        </>
-                      ) : (
-                        <>
-                          <MapPin size={16} className="shrink-0" />
-                          <span className="truncate">{event.location}</span>
-                        </>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users size={16} className="shrink-0" />
-                      <span>
-                        {event.registeredCount} / {event.capacity} registered
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-muted-foreground">Capacity</span>
-                      <span className={`font-medium ${isNearCapacity ? 'text-accent' : ''}`}>
-                        {Math.round(capacityPercentage)}%
-                      </span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all ${
-                          isFull ? 'bg-destructive' : isNearCapacity ? 'bg-accent' : 'bg-teal'
-                        }`}
-                        style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {event.ticketTypes.length > 0 && (
-                    <div className="pt-2 border-t">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Ticket size={16} className="text-muted-foreground" />
-                        <span className="text-muted-foreground">From</span>
-                        <span className="font-semibold">
-                          {formatCurrency(Math.min(...event.ticketTypes.map(t => t.price)))}
-                        </span>
+                <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+                  eventTypeColor === 'blue' ? 'bg-blue-500' : 
+                  eventTypeColor === 'green' ? 'bg-green-500' : 
+                  'bg-purple-500'
+                }`} />
+                
+                <div className="p-6 space-y-4">
+                  <div className="flex items-start gap-4">
+                    <div className={`flex-shrink-0 w-16 h-16 rounded-lg ${cardBgAccent} flex flex-col items-center justify-center border-2 ${
+                      eventTypeColor === 'blue' ? 'border-blue-200' : 
+                      eventTypeColor === 'green' ? 'border-green-200' : 
+                      'border-purple-200'
+                    }`}>
+                      <div className={`text-xs font-bold ${
+                        eventTypeColor === 'blue' ? 'text-blue-600' : 
+                        eventTypeColor === 'green' ? 'text-green-600' : 
+                        'text-purple-600'
+                      }`}>
+                        {month}
+                      </div>
+                      <div className={`text-2xl font-bold ${
+                        eventTypeColor === 'blue' ? 'text-blue-700' : 
+                        eventTypeColor === 'green' ? 'text-green-700' : 
+                        'text-purple-700'
+                      }`}>
+                        {day}
                       </div>
                     </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className="font-semibold text-lg leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                          {event.name}
+                        </h3>
+                        {renderProgressRing(capacityPercentage)}
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {event.virtual && !event.location.includes('Hybrid') ? (
+                          <>
+                            <Video size={14} weight="fill" className="text-blue-500" />
+                            <span>Webinar</span>
+                          </>
+                        ) : event.location.includes('Hybrid') ? (
+                          <>
+                            <Video size={14} weight="fill" className="text-purple-500" />
+                            <MapPin size={14} weight="fill" className="text-purple-500" />
+                            <span>Hybrid</span>
+                          </>
+                        ) : (
+                          <>
+                            <MapPin size={14} weight="fill" className="text-green-500" />
+                            <span className="truncate">In-Person</span>
+                          </>
+                        )}
+                        <span className="text-muted-foreground/50">•</span>
+                        <Clock size={14} />
+                        <span>{formatDate(event.startDate, true)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {smartTags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {smartTags.map((tag, idx) => (
+                        <Badge
+                          key={idx}
+                          variant={tag.variant === 'success' ? 'default' : 'outline'}
+                          className={`text-xs ${
+                            tag.variant === 'success' 
+                              ? 'bg-green-100 text-green-700 border-green-300' 
+                              : tag.variant === 'warning'
+                              ? 'bg-amber-100 text-amber-700 border-amber-300'
+                              : tag.variant === 'destructive'
+                              ? 'bg-red-100 text-red-700 border-red-300'
+                              : ''
+                          }`}
+                        >
+                          {tag.variant === 'success' && <Medal size={12} weight="fill" className="mr-1" />}
+                          {tag.variant === 'warning' && <Clock size={12} weight="fill" className="mr-1" />}
+                          {tag.variant === 'destructive' && <WarningCircle size={12} weight="fill" className="mr-1" />}
+                          {tag.label}
+                        </Badge>
+                      ))}
+                    </div>
                   )}
+
+                  <div className="pt-3 border-t space-y-3">
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">
+                          {hasMemberDiscount ? 'Member Price' : 'Starting at'}
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold text-foreground">
+                            {formatCurrency(memberPrice)}
+                          </span>
+                          {hasMemberDiscount && (
+                            <span className="text-sm text-muted-foreground line-through">
+                              {formatCurrency(nonMemberPrice)}
+                            </span>
+                          )}
+                        </div>
+                        {hasMemberDiscount && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <CheckCircle size={14} weight="fill" className="text-green-600" />
+                            <span className="text-xs font-medium text-green-600">
+                              Save {formatCurrency(nonMemberPrice - memberPrice)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">
+                          {event.registeredCount} / {event.capacity}
+                        </div>
+                        <div className="text-xs font-medium">
+                          {isFull ? (
+                            <span className="text-red-600">Full</span>
+                          ) : capacityPercentage >= 75 ? (
+                            <span className="text-amber-600">{Math.round(capacityPercentage)}% Full</span>
+                          ) : (
+                            <span className="text-green-600">Available</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 space-y-2">
+                      <div className="h-px bg-border" />
+                      <TooltipProvider>
+                        <div className="flex gap-2">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={(e) => handleViewDetails(event, e)}
+                              >
+                                <Eye size={16} className="mr-1.5" />
+                                Details
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>View full event details</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => handleCopyLink(event.id, e)}
+                              >
+                                <LinkIcon size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Copy registration link</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => handleEmailAttendees(event.name, e)}
+                              >
+                                <EnvelopeSimple size={16} />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Email attendees</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TooltipProvider>
+                    </div>
+                  </div>
                 </div>
               </Card>
             )
