@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useKV } from '@github-spark/sdk'
+import { useKV } from '@github/spark/hooks'
 import type { Member, Chapter } from '@/lib/types'
 import type {
   MemberRole,

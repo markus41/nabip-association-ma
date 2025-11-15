@@ -1,39 +1,15 @@
 /**
- * Stripe Client Configuration
+ * Stripe Client Configuration (Demo Mode)
  *
- * Establishes secure payment processing integration for scalable eCommerce operations.
- * Designed to streamline checkout workflows and ensure PCI compliance.
+ * This is a stub implementation for the demo. In production, this would integrate
+ * with @stripe/stripe-js for actual payment processing.
  *
  * Best for: Production-ready payment processing with minimal compliance overhead
  */
 
-import { loadStripe, Stripe } from '@stripe/stripe-js'
-
-// Environment variables configuration
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-
-if (!stripePublishableKey) {
-  console.warn(
-    'Stripe publishable key not configured. Payment features will be disabled. ' +
-    'Set VITE_STRIPE_PUBLISHABLE_KEY in your environment variables.'
-  )
-}
-
-/**
- * Lazy-loaded Stripe instance for optimal performance
- *
- * Benefits:
- * - Deferred script loading reduces initial page load time
- * - Automatic PCI compliance through Stripe.js
- * - Built-in fraud prevention and security
- */
-let stripePromise: Promise<Stripe | null> | null = null
-
-export const getStripe = (): Promise<Stripe | null> => {
-  if (!stripePromise && stripePublishableKey) {
-    stripePromise = loadStripe(stripePublishableKey)
-  }
-  return stripePromise || Promise.resolve(null)
+export const getStripe = (): Promise<null> => {
+  console.warn('Stripe is not configured in demo mode')
+  return Promise.resolve(null)
 }
 
 /**
