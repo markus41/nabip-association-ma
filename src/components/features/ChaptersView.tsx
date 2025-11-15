@@ -17,7 +17,7 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
 
   const hierarchicalChapters = useMemo(() => {
     const national = chapters.filter(c => c.type === 'national')
-    const states = chapters.filter(c => c.type === 'state')
+    const states = chapters.filter(c => c.type === 'state').sort((a, b) => a.name.localeCompare(b.name))
     const locals = chapters.filter(c => c.type === 'local')
     
     return {
@@ -27,6 +27,10 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
       total: chapters.length
     }
   }, [chapters])
+
+  const getChildChapters = (parentId: string) => {
+    return chapters.filter(c => c.parentChapterId === parentId).sort((a, b) => a.name.localeCompare(b.name))
+  }
 
   const filteredChapters = useMemo(() => {
     if (selectedType === 'all') return chapters
@@ -237,87 +241,278 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
       {viewMode === 'grid' ? (
         <ChaptersGrid chapters={chapters} loading={loading} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {loading ? (
-          Array.from({ length: 9 }).map((_, i) => (
-            <Card key={i} className="p-6">
-              <div className="space-y-4">
-                <div className="h-6 bg-muted animate-shimmer rounded w-3/4" />
-                <div className="h-4 bg-muted animate-shimmer rounded w-1/2" />
-                <div className="h-4 bg-muted animate-shimmer rounded w-full" />
-              </div>
-            </Card>
-          ))
-        ) : filteredChapters.length === 0 ? (
-          <div className="col-span-full">
-            <Card className="p-12">
-              <div className="text-center">
-                <Buildings size={48} className="mx-auto text-muted-foreground mb-2" />
-                <p className="text-muted-foreground">No chapters found</p>
-              </div>
-            </Card>
-          </div>
-        ) : (
-          filteredChapters.map((chapter) => (
-            <Card
-              key={chapter.id}
-              className="p-6 hover:shadow-lg transition-all cursor-pointer group"
-            >
-              <div className="space-y-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-lg leading-tight truncate group-hover:text-primary transition-colors">
-                      {chapter.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="outline" className="capitalize">
-                        {chapter.type}
-                      </Badge>
-                      {chapter.region && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin size={14} />
-                          <span className="truncate">{chapter.region}</span>
+        <>
+          {selectedType === 'all' || selectedType === 'national' ? (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">National Organization</h2>
+                <div className="grid grid-cols-1 gap-6">
+                  {loading ? (
+                    <Card className="p-6">
+                      <div className="space-y-4">
+                        <div className="h-6 bg-muted animate-shimmer rounded w-3/4" />
+                        <div className="h-4 bg-muted animate-shimmer rounded w-1/2" />
+                        <div className="h-4 bg-muted animate-shimmer rounded w-full" />
+                      </div>
+                    </Card>
+                  ) : (
+                    hierarchicalChapters.national.map((chapter) => (
+                      <Card
+                        key={chapter.id}
+                        className="p-6 hover:shadow-lg transition-all cursor-pointer group"
+                      >
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-xl leading-tight group-hover:text-primary transition-colors">
+                                {chapter.name}
+                              </h3>
+                              <div className="flex items-center gap-3 mt-3">
+                                <Badge variant="secondary" className="capitalize">
+                                  {chapter.type}
+                                </Badge>
+                                {chapter.established && (
+                                  <span className="text-sm text-muted-foreground">
+                                    Est. {chapter.established}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="w-14 h-14 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                              <Buildings size={28} weight="duotone" className="text-primary" />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-4 pt-3 border-t">
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-1">Members</p>
+                              <p className="text-2xl font-semibold tabular-nums">
+                                {chapter.memberCount.toLocaleString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-1">State Chapters</p>
+                              <p className="text-2xl font-semibold tabular-nums">
+                                {getChildChapters(chapter.id).length}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-1">Events</p>
+                              <p className="text-2xl font-semibold tabular-nums">
+                                {chapter.activeEventsCount}
+                              </p>
+                            </div>
+                          </div>
+
+                          {(chapter.websiteUrl || chapter.contactEmail) && (
+                            <div className="pt-3 border-t flex items-center gap-4 text-sm">
+                              {chapter.websiteUrl && (
+                                <a
+                                  href={chapter.websiteUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Visit Website
+                                </a>
+                              )}
+                              {chapter.contactEmail && (
+                                <a
+                                  href={`mailto:${chapter.contactEmail}`}
+                                  className="text-muted-foreground hover:text-foreground"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {chapter.contactEmail}
+                                </a>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Buildings size={20} weight="duotone" className="text-primary" />
-                  </div>
+                      </Card>
+                    ))
+                  )}
                 </div>
-
-                <div className="grid grid-cols-2 gap-3 pt-3 border-t">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Members</p>
-                    <p className="text-2xl font-semibold tabular-nums">
-                      {chapter.memberCount.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Events</p>
-                    <p className="text-2xl font-semibold tabular-nums">
-                      {chapter.activeEventsCount}
-                    </p>
-                  </div>
-                </div>
-
-                {chapter.type !== 'national' && (
-                  <div className="pt-3 border-t">
-                    <p className="text-xs text-muted-foreground">
-                      Reports to:{' '}
-                      <span className="font-medium">
-                        {chapter.parentChapterId
-                          ? chapters.find(c => c.id === chapter.parentChapterId)?.name || 'N/A'
-                          : 'N/A'}
-                      </span>
-                    </p>
-                  </div>
-                )}
               </div>
-            </Card>
-          ))
-          )}
-        </div>
+            </div>
+          ) : null}
+
+          {selectedType === 'all' || selectedType === 'state' ? (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">State Chapters</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {loading ? (
+                    Array.from({ length: 9 }).map((_, i) => (
+                      <Card key={i} className="p-6">
+                        <div className="space-y-4">
+                          <div className="h-6 bg-muted animate-shimmer rounded w-3/4" />
+                          <div className="h-4 bg-muted animate-shimmer rounded w-1/2" />
+                          <div className="h-4 bg-muted animate-shimmer rounded w-full" />
+                        </div>
+                      </Card>
+                    ))
+                  ) : hierarchicalChapters.states.length === 0 ? (
+                    <div className="col-span-full">
+                      <Card className="p-12">
+                        <div className="text-center">
+                          <Buildings size={48} className="mx-auto text-muted-foreground mb-2" />
+                          <p className="text-muted-foreground">No state chapters found</p>
+                        </div>
+                      </Card>
+                    </div>
+                  ) : (
+                    hierarchicalChapters.states.map((chapter) => {
+                      const localChapters = getChildChapters(chapter.id)
+                      return (
+                        <Card
+                          key={chapter.id}
+                          className="p-6 hover:shadow-lg transition-all cursor-pointer group"
+                        >
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-lg leading-tight truncate group-hover:text-primary transition-colors">
+                                  {chapter.name}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <Badge variant="outline" className="capitalize">
+                                    {chapter.type}
+                                  </Badge>
+                                  {chapter.state && (
+                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                      <MapPin size={14} />
+                                      <span className="truncate">{chapter.state}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="w-10 h-10 rounded-lg bg-teal/10 flex items-center justify-center shrink-0">
+                                <Buildings size={20} weight="duotone" className="text-teal" />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 pt-3 border-t">
+                              <div>
+                                <p className="text-sm text-muted-foreground mb-1">Members</p>
+                                <p className="text-2xl font-semibold tabular-nums">
+                                  {chapter.memberCount.toLocaleString()}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-muted-foreground mb-1">Local</p>
+                                <p className="text-2xl font-semibold tabular-nums">
+                                  {localChapters.length}
+                                </p>
+                              </div>
+                            </div>
+
+                            {chapter.president && (
+                              <div className="pt-3 border-t">
+                                <p className="text-xs text-muted-foreground">
+                                  President: <span className="font-medium text-foreground">{chapter.president}</span>
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {selectedType === 'all' || selectedType === 'local' ? (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Local Chapters</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {loading ? (
+                    Array.from({ length: 9 }).map((_, i) => (
+                      <Card key={i} className="p-6">
+                        <div className="space-y-4">
+                          <div className="h-6 bg-muted animate-shimmer rounded w-3/4" />
+                          <div className="h-4 bg-muted animate-shimmer rounded w-1/2" />
+                          <div className="h-4 bg-muted animate-shimmer rounded w-full" />
+                        </div>
+                      </Card>
+                    ))
+                  ) : hierarchicalChapters.locals.length === 0 ? (
+                    <div className="col-span-full">
+                      <Card className="p-12">
+                        <div className="text-center">
+                          <Buildings size={48} className="mx-auto text-muted-foreground mb-2" />
+                          <p className="text-muted-foreground">No local chapters found</p>
+                        </div>
+                      </Card>
+                    </div>
+                  ) : (
+                    filteredChapters
+                      .filter(c => c.type === 'local')
+                      .map((chapter) => {
+                        const parentChapter = chapters.find(c => c.id === chapter.parentChapterId)
+                        return (
+                          <Card
+                            key={chapter.id}
+                            className="p-6 hover:shadow-lg transition-all cursor-pointer group"
+                          >
+                            <div className="space-y-4">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold text-lg leading-tight truncate group-hover:text-primary transition-colors">
+                                    {chapter.name}
+                                  </h3>
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <Badge variant="outline" className="capitalize">
+                                      {chapter.type}
+                                    </Badge>
+                                    {chapter.region && (
+                                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                        <MapPin size={14} />
+                                        <span className="truncate text-xs">{chapter.region}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                                  <Buildings size={20} weight="duotone" className="text-accent-foreground" />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3 pt-3 border-t">
+                                <div>
+                                  <p className="text-sm text-muted-foreground mb-1">Members</p>
+                                  <p className="text-2xl font-semibold tabular-nums">
+                                    {chapter.memberCount.toLocaleString()}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground mb-1">Events</p>
+                                  <p className="text-2xl font-semibold tabular-nums">
+                                    {chapter.activeEventsCount}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {parentChapter && (
+                                <div className="pt-3 border-t">
+                                  <p className="text-xs text-muted-foreground">
+                                    Part of: <span className="font-medium text-foreground">{parentChapter.name}</span>
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        )
+                      })
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   )

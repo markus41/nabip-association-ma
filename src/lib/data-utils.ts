@@ -63,39 +63,111 @@ export function generateMembers(count: number): Member[] {
 }
 
 export function generateChapters(): Chapter[] {
-  const states = ['California', 'Texas', 'Florida', 'New York', 'Illinois', 'Pennsylvania', 'Ohio', 'Georgia', 'North Carolina', 'Michigan']
-  const chapters: Chapter[] = [
-    {
-      id: 'chapter-national',
-      name: 'NABIP National',
-      type: 'national',
-      region: 'National',
-      memberCount: 20000,
-      activeEventsCount: 12
-    }
+  const statesData = [
+    { name: 'Alabama', cities: ['Birmingham', 'Montgomery', 'Mobile'] },
+    { name: 'Alaska', cities: ['Anchorage', 'Fairbanks', 'Juneau'] },
+    { name: 'Arizona', cities: ['Phoenix', 'Tucson', 'Mesa'] },
+    { name: 'Arkansas', cities: ['Little Rock', 'Fort Smith', 'Fayetteville'] },
+    { name: 'California', cities: ['Los Angeles', 'San Diego', 'San Francisco', 'Sacramento', 'San Jose'] },
+    { name: 'Colorado', cities: ['Denver', 'Colorado Springs', 'Aurora'] },
+    { name: 'Connecticut', cities: ['Hartford', 'New Haven', 'Stamford'] },
+    { name: 'Delaware', cities: ['Wilmington', 'Dover', 'Newark'] },
+    { name: 'Florida', cities: ['Miami', 'Tampa', 'Orlando', 'Jacksonville', 'Tallahassee'] },
+    { name: 'Georgia', cities: ['Atlanta', 'Augusta', 'Columbus', 'Savannah'] },
+    { name: 'Hawaii', cities: ['Honolulu', 'Hilo', 'Kailua'] },
+    { name: 'Idaho', cities: ['Boise', 'Meridian', 'Nampa'] },
+    { name: 'Illinois', cities: ['Chicago', 'Aurora', 'Naperville', 'Peoria'] },
+    { name: 'Indiana', cities: ['Indianapolis', 'Fort Wayne', 'Evansville'] },
+    { name: 'Iowa', cities: ['Des Moines', 'Cedar Rapids', 'Davenport'] },
+    { name: 'Kansas', cities: ['Wichita', 'Overland Park', 'Kansas City'] },
+    { name: 'Kentucky', cities: ['Louisville', 'Lexington', 'Bowling Green'] },
+    { name: 'Louisiana', cities: ['New Orleans', 'Baton Rouge', 'Shreveport'] },
+    { name: 'Maine', cities: ['Portland', 'Lewiston', 'Bangor'] },
+    { name: 'Maryland', cities: ['Baltimore', 'Frederick', 'Rockville'] },
+    { name: 'Massachusetts', cities: ['Boston', 'Worcester', 'Springfield'] },
+    { name: 'Michigan', cities: ['Detroit', 'Grand Rapids', 'Ann Arbor'] },
+    { name: 'Minnesota', cities: ['Minneapolis', 'St. Paul', 'Rochester'] },
+    { name: 'Mississippi', cities: ['Jackson', 'Gulfport', 'Southaven'] },
+    { name: 'Missouri', cities: ['Kansas City', 'St. Louis', 'Springfield'] },
+    { name: 'Montana', cities: ['Billings', 'Missoula', 'Great Falls'] },
+    { name: 'Nebraska', cities: ['Omaha', 'Lincoln', 'Bellevue'] },
+    { name: 'Nevada', cities: ['Las Vegas', 'Reno', 'Henderson'] },
+    { name: 'New Hampshire', cities: ['Manchester', 'Nashua', 'Concord'] },
+    { name: 'New Jersey', cities: ['Newark', 'Jersey City', 'Paterson'] },
+    { name: 'New Mexico', cities: ['Albuquerque', 'Las Cruces', 'Rio Rancho'] },
+    { name: 'New York', cities: ['New York City', 'Buffalo', 'Rochester', 'Syracuse'] },
+    { name: 'North Carolina', cities: ['Charlotte', 'Raleigh', 'Greensboro', 'Durham'] },
+    { name: 'North Dakota', cities: ['Fargo', 'Bismarck', 'Grand Forks'] },
+    { name: 'Ohio', cities: ['Columbus', 'Cleveland', 'Cincinnati', 'Toledo'] },
+    { name: 'Oklahoma', cities: ['Oklahoma City', 'Tulsa', 'Norman'] },
+    { name: 'Oregon', cities: ['Portland', 'Salem', 'Eugene'] },
+    { name: 'Pennsylvania', cities: ['Philadelphia', 'Pittsburgh', 'Allentown', 'Erie'] },
+    { name: 'Rhode Island', cities: ['Providence', 'Warwick', 'Cranston'] },
+    { name: 'South Carolina', cities: ['Charleston', 'Columbia', 'North Charleston'] },
+    { name: 'South Dakota', cities: ['Sioux Falls', 'Rapid City', 'Aberdeen'] },
+    { name: 'Tennessee', cities: ['Nashville', 'Memphis', 'Knoxville', 'Chattanooga'] },
+    { name: 'Texas', cities: ['Houston', 'Dallas', 'Austin', 'San Antonio', 'Fort Worth'] },
+    { name: 'Utah', cities: ['Salt Lake City', 'West Valley City', 'Provo'] },
+    { name: 'Vermont', cities: ['Burlington', 'South Burlington', 'Rutland'] },
+    { name: 'Virginia', cities: ['Virginia Beach', 'Norfolk', 'Richmond', 'Arlington'] },
+    { name: 'Washington', cities: ['Seattle', 'Spokane', 'Tacoma', 'Vancouver'] },
+    { name: 'West Virginia', cities: ['Charleston', 'Huntington', 'Morgantown'] },
+    { name: 'Wisconsin', cities: ['Milwaukee', 'Madison', 'Green Bay'] },
+    { name: 'Wyoming', cities: ['Cheyenne', 'Casper', 'Laramie'] }
   ]
   
-  states.forEach((state, index) => {
+  const chapters: Chapter[] = []
+  
+  const nationalChapter: Chapter = {
+    id: 'chapter-national',
+    name: 'NABIP National',
+    type: 'national',
+    region: 'United States',
+    memberCount: 17000,
+    activeEventsCount: 15,
+    websiteUrl: 'https://www.nabip.org',
+    contactEmail: 'info@nabip.org',
+    phone: '(202) 595-0787',
+    president: 'National President',
+    established: '1929'
+  }
+  chapters.push(nationalChapter)
+  
+  statesData.forEach((stateData, stateIndex) => {
     const stateChapter: Chapter = {
-      id: `chapter-state-${index + 1}`,
-      name: `NABIP ${state}`,
+      id: `chapter-state-${stateIndex + 1}`,
+      name: `NABIP ${stateData.name}`,
       type: 'state',
       parentChapterId: 'chapter-national',
-      region: state,
-      memberCount: Math.floor(Math.random() * 2000) + 500,
-      activeEventsCount: Math.floor(Math.random() * 5) + 1
+      state: stateData.name,
+      region: stateData.name,
+      memberCount: Math.floor(Math.random() * 800) + 200,
+      activeEventsCount: Math.floor(Math.random() * 8) + 2,
+      websiteUrl: `https://nabip${stateData.name.toLowerCase().replace(/\s+/g, '')}.org`,
+      contactEmail: `info@nabip${stateData.name.toLowerCase().replace(/\s+/g, '')}.org`,
+      phone: `(${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+      president: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
+      established: `${1950 + Math.floor(Math.random() * 60)}`
     }
     chapters.push(stateChapter)
     
-    for (let i = 0; i < 3; i++) {
+    const numLocalChapters = Math.min(stateData.cities.length, Math.floor(Math.random() * 3) + 2)
+    for (let i = 0; i < numLocalChapters; i++) {
+      const city = stateData.cities[i]
       chapters.push({
-        id: `chapter-local-${index * 3 + i + 1}`,
-        name: `${state} Local Chapter ${i + 1}`,
+        id: `chapter-local-${stateIndex * 10 + i + 1}`,
+        name: `${city} Chapter`,
         type: 'local',
         parentChapterId: stateChapter.id,
-        region: state,
-        memberCount: Math.floor(Math.random() * 200) + 50,
-        activeEventsCount: Math.floor(Math.random() * 3)
+        state: stateData.name,
+        city: city,
+        region: `${city}, ${stateData.name}`,
+        memberCount: Math.floor(Math.random() * 150) + 30,
+        activeEventsCount: Math.floor(Math.random() * 4) + 1,
+        contactEmail: `${city.toLowerCase().replace(/\s+/g, '')}@nabip${stateData.name.toLowerCase().replace(/\s+/g, '')}.org`,
+        phone: `(${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+        president: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
+        established: `${1960 + Math.floor(Math.random() * 50)}`
       })
     }
   })

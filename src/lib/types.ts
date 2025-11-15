@@ -64,12 +64,17 @@ export interface Chapter {
   name: string
   type: ChapterType
   parentChapterId?: string
+  state?: string
+  city?: string
   region?: string
   memberCount: number
   activeEventsCount: number
   revenueShare?: number
   websiteUrl?: string
   contactEmail?: string
+  phone?: string
+  president?: string
+  established?: string
   settings?: ChapterSettings
 }
 
