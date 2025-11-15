@@ -53,6 +53,20 @@ export function EventsView({ events, onAddEvent, loading }: EventsViewProps) {
     }).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
   }, [events, searchQuery, statusFilter])
 
+  const stats = useMemo(() => {
+    const upcoming = events.filter(e => e.status === 'published' && new Date(e.startDate) > new Date()).length
+    const totalRegistrations = events.reduce((sum, e) => sum + e.registeredCount, 0)
+    const totalCapacity = events.reduce((sum, e) => sum + e.capacity, 0)
+    const virtualEvents = events.filter(e => e.virtual).length
+
+    return {
+      upcoming,
+      totalRegistrations,
+      capacityUtilization: totalCapacity > 0 ? Math.round((totalRegistrations / totalCapacity) * 100) : 0,
+      virtualEvents
+    }
+  }, [events])
+
   const handleRegister = (event: Event) => {
     toast.success(`Registered for ${event.name}`, {
       description: 'You will receive a confirmation email shortly.'
@@ -72,6 +86,72 @@ export function EventsView({ events, onAddEvent, loading }: EventsViewProps) {
           <Plus className="mr-2" size={18} weight="bold" />
           Create Event
         </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <CalendarDots size={20} weight="duotone" className="text-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wide">
+                Upcoming Events
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {loading ? '...' : stats.upcoming}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-teal/10 flex items-center justify-center">
+              <Users size={20} weight="duotone" className="text-teal" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wide">
+                Total Registrations
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {loading ? '...' : stats.totalRegistrations}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+              <Ticket size={20} weight="duotone" className="text-accent-foreground" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wide">
+                Capacity Utilization
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {loading ? '...' : `${stats.capacityUtilization}%`}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+              <Video size={20} weight="duotone" className="text-accent-foreground" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wide">
+                Virtual Events
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {loading ? '...' : stats.virtualEvents}
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
 
       <Card className="p-4">

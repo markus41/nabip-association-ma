@@ -57,6 +57,26 @@ export function MembersView({ members, onAddMember, loading }: MembersViewProps)
     })
   }, [members, searchQuery, statusFilter, typeFilter])
 
+  const stats = useMemo(() => {
+    const active = members.filter(m => m.status === 'active').length
+    const pending = members.filter(m => m.status === 'pending').length
+    const expired = members.filter(m => m.status === 'expired').length
+    const avgEngagement = members.reduce((sum, m) => sum + m.engagementScore, 0) / members.length
+    
+    const byType = members.reduce((acc, m) => {
+      acc[m.memberType] = (acc[m.memberType] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+
+    return {
+      active,
+      pending,
+      expired,
+      avgEngagement: Math.round(avgEngagement),
+      byType
+    }
+  }, [members])
+
   const handleExport = () => {
     toast.success('Exporting members data...', {
       description: 'Your CSV file will download shortly.'
@@ -125,6 +145,72 @@ export function MembersView({ members, onAddMember, loading }: MembersViewProps)
           </div>
         </div>
       </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-teal/10 flex items-center justify-center">
+              <UserCircle size={20} weight="duotone" className="text-teal" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wide">
+                Active Members
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {loading ? '...' : stats.active.toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+              <UserCircle size={20} weight="duotone" className="text-accent-foreground" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wide">
+                Pending Approval
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {loading ? '...' : stats.pending}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+              <UserCircle size={20} weight="duotone" className="text-destructive" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wide">
+                Expired
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {loading ? '...' : stats.expired}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <UserCircle size={20} weight="duotone" className="text-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wide">
+                Avg Engagement
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {loading ? '...' : `${stats.avgEngagement}%`}
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       <Card>
         <Table>

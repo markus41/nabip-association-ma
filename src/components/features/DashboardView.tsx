@@ -167,28 +167,30 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
         </div>
       </Card>
 
-      <CustomLineChart
-        data={memberTrendData}
-        lines={[
-          { dataKey: 'active', name: 'Active Members', color: 'oklch(0.25 0.05 250)' },
-          { dataKey: 'pending', name: 'Pending Approvals', color: 'oklch(0.60 0.12 200)' },
-        ]}
-        xAxisKey="month"
-        title="Member Trends"
-        description="Six-month membership growth and pending applications"
-        loading={loading}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CustomLineChart
+          data={memberTrendData}
+          lines={[
+            { dataKey: 'active', name: 'Active Members', color: 'oklch(0.25 0.05 250)' },
+            { dataKey: 'pending', name: 'Pending Approvals', color: 'oklch(0.60 0.12 200)' },
+          ]}
+          xAxisKey="month"
+          title="Member Trends"
+          description="Six-month membership growth and pending applications"
+          loading={loading}
+        />
 
-      <CustomBarChart
-        data={revenueByTypeData}
-        bars={[
-          { dataKey: 'amount', name: 'Revenue', color: 'oklch(0.25 0.05 250)' },
-        ]}
-        xAxisKey="type"
-        title="Revenue Sources"
-        description="YTD revenue breakdown by category"
-        loading={loading}
-      />
+        <CustomBarChart
+          data={revenueByTypeData}
+          bars={[
+            { dataKey: 'amount', name: 'Revenue', color: 'oklch(0.25 0.05 250)' },
+          ]}
+          xAxisKey="type"
+          title="Revenue Sources"
+          description="YTD revenue breakdown by category"
+          loading={loading}
+        />
+      </div>
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">

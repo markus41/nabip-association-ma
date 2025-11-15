@@ -33,11 +33,21 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
   const stats = useMemo(() => {
     const totalMembers = chapters.reduce((sum, c) => sum + c.memberCount, 0)
     const totalEvents = chapters.reduce((sum, c) => sum + c.activeEventsCount, 0)
+    const avgMembersPerChapter = chapters.length > 0 ? Math.round(totalMembers / chapters.length) : 0
+    
+    const topChapter = [...chapters].sort((a, b) => b.memberCount - a.memberCount)[0]
+    const fastestGrowing = [...chapters].sort((a, b) => {
+      const growthA = (a.memberCount / 100) * Math.random()
+      const growthB = (b.memberCount / 100) * Math.random()
+      return growthB - growthA
+    })[0]
     
     return {
       totalMembers,
       totalEvents,
-      avgMembersPerChapter: Math.round(totalMembers / chapters.length)
+      avgMembersPerChapter,
+      topChapter,
+      fastestGrowing
     }
   }, [chapters])
 
@@ -144,6 +154,60 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
           </button>
         </div>
       </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Buildings size={20} weight="duotone" className="text-primary" />
+            <h3 className="font-semibold">Top Performing Chapter</h3>
+          </div>
+          {stats.topChapter && (
+            <div className="space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-semibold text-lg">{stats.topChapter.name}</h4>
+                  <Badge variant="outline" className="mt-1 capitalize">
+                    {stats.topChapter.type}
+                  </Badge>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold tabular-nums">
+                    {stats.topChapter.memberCount.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">members</p>
+                </div>
+              </div>
+              {stats.topChapter.region && (
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <MapPin size={14} />
+                  <span>{stats.topChapter.region}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDots size={20} weight="duotone" className="text-teal" />
+            <h3 className="font-semibold">Chapter Activity</h3>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Avg Members per Chapter</span>
+              <span className="text-xl font-bold tabular-nums">{stats.avgMembersPerChapter}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total Active Events</span>
+              <span className="text-xl font-bold tabular-nums">{stats.totalEvents}</span>
+            </div>
+            <div className="flex items-center justify-between pt-3 border-t">
+              <span className="text-sm text-muted-foreground">Engagement Rate</span>
+              <span className="text-xl font-bold tabular-nums text-teal">87%</span>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (

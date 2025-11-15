@@ -192,6 +192,67 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
         </div>
       </Card>
 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="p-6 lg:col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <BookOpen size={20} weight="duotone" className="text-primary" />
+            <h3 className="font-semibold">Popular Courses</h3>
+          </div>
+          <div className="space-y-3">
+            {courses.slice(0, 3).map((course, idx) => (
+              <div
+                key={course.id}
+                className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors cursor-pointer"
+                onClick={() => setSelectedCourse(course)}
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-sm font-bold text-primary">{idx + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{course.name}</p>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                      <span>{course.enrollmentCount} enrolled</span>
+                      <span>•</span>
+                      <span>{course.duration}h</span>
+                    </div>
+                  </div>
+                </div>
+                <Badge variant="outline" className="shrink-0">
+                  {course.category}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <GraduationCap size={20} weight="duotone" className="text-accent-foreground" />
+            <h3 className="font-semibold">Learning Stats</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-muted-foreground">Completion Rate</span>
+                <span className="text-sm font-semibold">{stats.enrolled > 0 ? Math.round((stats.completed / stats.enrolled) * 100) : 0}%</span>
+              </div>
+              <Progress value={stats.enrolled > 0 ? (stats.completed / stats.enrolled) * 100 : 0} />
+            </div>
+            <div className="pt-3 border-t">
+              <p className="text-xs text-muted-foreground mb-1">Avg Course Duration</p>
+              <p className="text-2xl font-bold">
+                {courses.length > 0 ? Math.round(courses.reduce((sum, c) => sum + c.duration, 0) / courses.length) : 0}h
+              </p>
+            </div>
+            <div className="pt-3 border-t">
+              <p className="text-xs text-muted-foreground mb-1">Available Courses</p>
+              <p className="text-2xl font-bold">{courses.filter(c => c.status === 'published').length}</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (

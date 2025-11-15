@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Progress } from '@/components/ui/progress'
 import { 
   EnvelopeSimple, 
   Plus, 
@@ -147,6 +147,86 @@ export function CommunicationsView({ campaigns, onNewCampaign, loading }: Commun
               <p className="text-2xl font-semibold tabular-nums">
                 {loading ? '...' : `${stats.avgClickRate}%`}
               </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <ChartLine size={20} weight="duotone" className="text-primary" />
+            <h3 className="font-semibold">Campaign Performance</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-muted-foreground">Open Rate</span>
+                <span className="text-sm font-semibold">{stats.avgOpenRate}%</span>
+              </div>
+              <Progress value={stats.avgOpenRate} />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-muted-foreground">Click Rate</span>
+                <span className="text-sm font-semibold">{stats.avgClickRate}%</span>
+              </div>
+              <Progress value={stats.avgClickRate} />
+            </div>
+            <div className="pt-3 border-t">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Engagement Score</span>
+                <span className="text-xl font-bold text-teal">A+</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarBlank size={20} weight="duotone" className="text-teal" />
+            <h3 className="font-semibold">Scheduled Campaigns</h3>
+          </div>
+          <div className="space-y-3">
+            {sortedCampaigns.filter(c => c.status === 'scheduled').slice(0, 3).map((campaign) => (
+              <div
+                key={campaign.id}
+                className="p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors cursor-pointer"
+                onClick={() => setSelectedCampaign(campaign)}
+              >
+                <p className="font-medium text-sm truncate">{campaign.name}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {campaign.scheduledDate && formatDate(campaign.scheduledDate)}
+                </p>
+              </div>
+            ))}
+            {sortedCampaigns.filter(c => c.status === 'scheduled').length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No scheduled campaigns</p>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Users size={20} weight="duotone" className="text-accent-foreground" />
+            <h3 className="font-semibold">Audience Reach</h3>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Total Recipients</p>
+              <p className="text-3xl font-bold">{stats.totalRecipients.toLocaleString()}</p>
+            </div>
+            <div className="pt-3 border-t">
+              <p className="text-xs text-muted-foreground mb-1">Avg per Campaign</p>
+              <p className="text-2xl font-bold">
+                {stats.totalSent > 0 ? Math.round(stats.totalRecipients / stats.totalSent).toLocaleString() : 0}
+              </p>
+            </div>
+            <div className="pt-3 border-t">
+              <p className="text-xs text-muted-foreground mb-1">Active Segments</p>
+              <p className="text-2xl font-bold">8</p>
             </div>
           </div>
         </Card>

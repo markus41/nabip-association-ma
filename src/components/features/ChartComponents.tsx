@@ -96,33 +96,33 @@ export function CustomLineChart({
   if (loading) {
     return (
       <Card className="p-4">
-        {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-        {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
-        <div className="animate-shimmer rounded w-full aspect-[16/9]" />
+        {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
+        {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
+        <div className="animate-shimmer rounded w-full h-[240px]" />
       </Card>
     )
   }
 
   return (
     <Card className="p-4 flex flex-col">
-      {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-      {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
-      <div className="w-full aspect-[16/9]">
+      {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
+      {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
+      <div className="w-full h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.90 0.01 250)" />
             <XAxis
               dataKey={xAxisKey}
-              tick={{ fontSize: 12, fill: 'oklch(0.50 0.02 250)' }}
+              tick={{ fontSize: 11, fill: 'oklch(0.50 0.02 250)' }}
               stroke="oklch(0.90 0.01 250)"
             />
             <YAxis
-              tick={{ fontSize: 12, fill: 'oklch(0.50 0.02 250)' }}
+              tick={{ fontSize: 11, fill: 'oklch(0.50 0.02 250)' }}
               stroke="oklch(0.90 0.01 250)"
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend
-              wrapperStyle={{ fontSize: 12 }}
+              wrapperStyle={{ fontSize: 11 }}
               iconType="circle"
             />
             {lines.map((line, index) => (
@@ -133,8 +133,8 @@ export function CustomLineChart({
                 name={line.name || line.dataKey}
                 stroke={line.color || defaultColors[index % defaultColors.length]}
                 strokeWidth={2}
-                dot={{ r: 4 }}
-                activeDot={{ r: 6 }}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
               />
             ))}
           </LineChart>
@@ -157,33 +157,33 @@ export function CustomBarChart({
   if (loading) {
     return (
       <Card className="p-4">
-        {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-        {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
-        <div className="animate-shimmer rounded w-full aspect-[16/9]" />
+        {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
+        {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
+        <div className="animate-shimmer rounded w-full h-[240px]" />
       </Card>
     )
   }
 
   return (
     <Card className="p-4 flex flex-col">
-      {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-      {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
-      <div className="w-full aspect-[16/9]">
+      {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
+      {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
+      <div className="w-full h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.90 0.01 250)" />
             <XAxis
               dataKey={xAxisKey}
-              tick={{ fontSize: 12, fill: 'oklch(0.50 0.02 250)' }}
+              tick={{ fontSize: 11, fill: 'oklch(0.50 0.02 250)' }}
               stroke="oklch(0.90 0.01 250)"
             />
             <YAxis
-              tick={{ fontSize: 12, fill: 'oklch(0.50 0.02 250)' }}
+              tick={{ fontSize: 11, fill: 'oklch(0.50 0.02 250)' }}
               stroke="oklch(0.90 0.01 250)"
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend
-              wrapperStyle={{ fontSize: 12 }}
+              wrapperStyle={{ fontSize: 11 }}
               iconType="square"
             />
             {bars.map((bar, index) => (
@@ -216,33 +216,33 @@ export function CustomAreaChart({
   if (loading) {
     return (
       <Card className="p-4">
-        {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-        {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
-        <div className="animate-shimmer rounded w-full aspect-[16/9]" />
+        {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
+        {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
+        <div className="animate-shimmer rounded w-full h-[240px]" />
       </Card>
     )
   }
 
   return (
     <Card className="p-4 flex flex-col">
-      {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-      {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
-      <div className="w-full aspect-[16/9]">
+      {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
+      {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
+      <div className="w-full h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.90 0.01 250)" />
             <XAxis
               dataKey={xAxisKey}
-              tick={{ fontSize: 12, fill: 'oklch(0.50 0.02 250)' }}
+              tick={{ fontSize: 11, fill: 'oklch(0.50 0.02 250)' }}
               stroke="oklch(0.90 0.01 250)"
             />
             <YAxis
-              tick={{ fontSize: 12, fill: 'oklch(0.50 0.02 250)' }}
+              tick={{ fontSize: 11, fill: 'oklch(0.50 0.02 250)' }}
               stroke="oklch(0.90 0.01 250)"
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend
-              wrapperStyle={{ fontSize: 12 }}
+              wrapperStyle={{ fontSize: 11 }}
               iconType="square"
             />
             {areas.map((area, index) => (
@@ -277,18 +277,18 @@ export function CustomPieChart({
   if (loading) {
     return (
       <Card className="p-4">
-        {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-        {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
-        <div className="animate-shimmer rounded w-full aspect-[16/9]" />
+        {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
+        {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
+        <div className="animate-shimmer rounded w-full h-[240px]" />
       </Card>
     )
   }
 
   return (
     <Card className="p-4 flex flex-col">
-      {title && <h3 className="text-lg font-semibold mb-1">{title}</h3>}
-      {description && <p className="text-sm text-muted-foreground mb-3">{description}</p>}
-      <div className="w-full aspect-[16/9]">
+      {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
+      {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
+      <div className="w-full h-[240px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -297,7 +297,7 @@ export function CustomPieChart({
               nameKey={nameKey}
               cx="50%"
               cy="50%"
-              outerRadius="70%"
+              outerRadius="60%"
               label={(entry) => `${entry[nameKey]}: ${entry[dataKey]}`}
               labelLine={{ stroke: 'oklch(0.50 0.02 250)', strokeWidth: 1 }}
             >
