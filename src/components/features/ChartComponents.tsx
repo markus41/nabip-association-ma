@@ -90,7 +90,7 @@ export function CustomLineChart({
   xAxisKey,
   title,
   description,
-  height = 300,
+  height = 240,
   loading,
 }: LineChartProps) {
   if (loading) {
@@ -98,7 +98,7 @@ export function CustomLineChart({
       <Card className="p-4">
         {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
         {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
-        <div className="animate-shimmer rounded w-full h-[240px]" />
+        <div className="animate-shimmer rounded w-full h-[200px]" />
       </Card>
     )
   }
@@ -107,7 +107,7 @@ export function CustomLineChart({
     <Card className="p-4 flex flex-col">
       {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
       {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
-      <div className="w-full h-[240px]">
+      <div className="w-full h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.90 0.01 250)" />
@@ -150,7 +150,7 @@ export function CustomBarChart({
   xAxisKey,
   title,
   description,
-  height = 300,
+  height = 240,
   stacked = false,
   loading,
 }: BarChartProps) {
@@ -159,7 +159,7 @@ export function CustomBarChart({
       <Card className="p-4">
         {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
         {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
-        <div className="animate-shimmer rounded w-full h-[240px]" />
+        <div className="animate-shimmer rounded w-full h-[200px]" />
       </Card>
     )
   }
@@ -168,7 +168,7 @@ export function CustomBarChart({
     <Card className="p-4 flex flex-col">
       {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
       {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
-      <div className="w-full h-[240px]">
+      <div className="w-full h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.90 0.01 250)" />
@@ -209,7 +209,7 @@ export function CustomAreaChart({
   xAxisKey,
   title,
   description,
-  height = 300,
+  height = 240,
   stacked = false,
   loading,
 }: AreaChartProps) {
@@ -218,7 +218,7 @@ export function CustomAreaChart({
       <Card className="p-4">
         {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
         {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
-        <div className="animate-shimmer rounded w-full h-[240px]" />
+        <div className="animate-shimmer rounded w-full h-[200px]" />
       </Card>
     )
   }
@@ -227,7 +227,7 @@ export function CustomAreaChart({
     <Card className="p-4 flex flex-col">
       {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
       {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
-      <div className="w-full h-[240px]">
+      <div className="w-full h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.90 0.01 250)" />
@@ -271,7 +271,7 @@ export function CustomPieChart({
   colors = defaultColors,
   title,
   description,
-  height = 300,
+  height = 240,
   loading,
 }: PieChartProps) {
   if (loading) {
@@ -279,7 +279,7 @@ export function CustomPieChart({
       <Card className="p-4">
         {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
         {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
-        <div className="animate-shimmer rounded w-full h-[240px]" />
+        <div className="animate-shimmer rounded w-full h-[200px]" />
       </Card>
     )
   }
@@ -288,7 +288,7 @@ export function CustomPieChart({
     <Card className="p-4 flex flex-col">
       {title && <h3 className="text-base font-semibold mb-1">{title}</h3>}
       {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
-      <div className="w-full h-[240px]">
+      <div className="w-full h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
