@@ -12,6 +12,8 @@ import { ChaptersView } from '@/components/features/ChaptersView'
 import { LearningView } from '@/components/features/LearningView'
 import { MemberPortal } from '@/components/features/MemberPortal'
 import { ReportsView } from '@/components/features/ReportsView'
+import { ChapterAdminView } from '@/components/features/ChapterAdminView'
+import { RoleSwitcher } from '@/components/features/RoleSwitcher'
 import {
   ChartBar,
   UserCircle,
@@ -24,6 +26,7 @@ import {
   FileText,
   House
 } from '@phosphor-icons/react'
+import type { UserRole } from '@/lib/types'
 import {
   generateMembers,
   generateChapters,
@@ -38,11 +41,33 @@ import {
 import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report } from '@/lib/types'
 import { toast } from 'sonner'
 
-type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal'
+type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal' | 'chapter-admin'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
   const [isLoading, setIsLoading] = useState(true)
+
+  // Mock user role - in production this would come from authentication
+  const [currentUserRole, setCurrentUserRole] = useState<UserRole>('national_admin')
+  const [currentUserChapterId, setCurrentUserChapterId] = useState<string | null>(null) // Set to a chapter ID for chapter_admin role
+
+  const handleRoleChange = (role: UserRole, chapterId: string | null) => {
+    setCurrentUserRole(role)
+    setCurrentUserChapterId(chapterId)
+
+    // Automatically navigate to appropriate view based on role
+    if (role === 'chapter_admin' && chapterId) {
+      setCurrentView('chapter-admin')
+    } else if (role === 'member') {
+      setCurrentView('portal')
+    } else {
+      setCurrentView('dashboard')
+    }
+
+    toast.success('Role Changed', {
+      description: `Switched to ${role.replace('_', ' ')} role`
+    })
+  }
   
   const [members, setMembers] = useKV<Member[]>('ams-members', [])
   const [chapters, setChapters] = useKV<Chapter[]>('ams-chapters', [])
@@ -161,17 +186,19 @@ function App() {
     })
   }
 
+  // Define navigation items based on user role
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: ChartBar },
-    { id: 'members', label: 'Members', icon: UserCircle },
-    { id: 'events', label: 'Events', icon: CalendarDots },
-    { id: 'communications', label: 'Communications', icon: EnvelopeSimple },
-    { id: 'finance', label: 'Finance', icon: CurrencyDollar },
-    { id: 'chapters', label: 'Chapters', icon: Buildings },
-    { id: 'learning', label: 'Learning', icon: GraduationCap },
-    { id: 'reports', label: 'Reports', icon: FileText },
-    { id: 'portal', label: 'My Portal', icon: House }
-  ]
+    { id: 'dashboard', label: 'Dashboard', icon: ChartBar, roles: ['chapter_admin', 'state_admin', 'national_admin'] },
+    { id: 'members', label: 'Members', icon: UserCircle, roles: ['state_admin', 'national_admin'] },
+    { id: 'events', label: 'Events', icon: CalendarDots, roles: ['state_admin', 'national_admin'] },
+    { id: 'communications', label: 'Communications', icon: EnvelopeSimple, roles: ['state_admin', 'national_admin'] },
+    { id: 'finance', label: 'Finance', icon: CurrencyDollar, roles: ['state_admin', 'national_admin'] },
+    { id: 'chapters', label: 'Chapters', icon: Buildings, roles: ['state_admin', 'national_admin'] },
+    { id: 'learning', label: 'Learning', icon: GraduationCap, roles: ['state_admin', 'national_admin'] },
+    { id: 'reports', label: 'Reports', icon: FileText, roles: ['state_admin', 'national_admin'] },
+    { id: 'chapter-admin', label: 'My Chapter', icon: Buildings, roles: ['chapter_admin'] },
+    { id: 'portal', label: 'My Portal', icon: House, roles: ['member'] }
+  ].filter(item => item.roles.includes(currentUserRole))
 
   const upcomingEvents = (events || [])
     .filter(e => e.status === 'published' && new Date(e.startDate) > new Date())
@@ -191,22 +218,29 @@ function App() {
             </div>
           </div>
           
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden md:flex items-center gap-2"
-            onClick={() => {
-              const event = new KeyboardEvent('keydown', {
-                key: 'k',
-                metaKey: true,
-                bubbles: true
-              })
-              document.dispatchEvent(event)
-            }}
-          >
-            <Command size={14} weight="bold" />
-            <span className="text-muted-foreground">⌘K</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <RoleSwitcher
+              currentRole={currentUserRole}
+              onRoleChange={handleRoleChange}
+              chapters={(chapters || []).map(c => ({ id: c.id, name: c.name }))}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden md:flex items-center gap-2"
+              onClick={() => {
+                const event = new KeyboardEvent('keydown', {
+                  key: 'k',
+                  metaKey: true,
+                  bubbles: true
+                })
+                document.dispatchEvent(event)
+              }}
+            >
+              <Command size={14} weight="bold" />
+              <span className="text-muted-foreground">⌘K</span>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -284,6 +318,16 @@ function App() {
           )}
           {currentView === 'portal' && (
             <MemberPortal memberId="current-member-id" />
+          )}
+          {currentView === 'chapter-admin' && currentUserChapterId && (
+            <ChapterAdminView
+              chapter={chapters.find(c => c.id === currentUserChapterId) || chapters[0]}
+              allMembers={members || []}
+              allEvents={events || []}
+              allTransactions={transactions || []}
+              allReports={reports || []}
+              loading={isLoading}
+            />
           )}
         </main>
       </div>

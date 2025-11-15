@@ -7,6 +7,7 @@ export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded' | 'p
 export type CampaignStatus = 'draft' | 'scheduled' | 'sending' | 'sent'
 export type TransactionType = 'membership_dues' | 'event_registration' | 'donation' | 'refund' | 'late_fee'
 export type CredentialStatus = 'active' | 'expired' | 'in_progress' | 'revoked'
+export type UserRole = 'member' | 'chapter_admin' | 'state_admin' | 'national_admin'
 
 export interface Member {
   id: string
@@ -31,6 +32,7 @@ export interface Member {
   preferences?: MemberPreferences
   customFields?: Record<string, any>
   lastLoginDate?: string
+  role?: UserRole
 }
 
 export interface Address {
@@ -368,4 +370,16 @@ export interface AuditLog {
   changes?: Record<string, any>
   timestamp: string
   ipAddress?: string
+}
+
+export interface User {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  role: UserRole
+  chapterId?: string
+  stateId?: string
+  avatarUrl?: string
+  lastLoginDate?: string
 }
