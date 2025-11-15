@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash, Check, X, PencilSimple, CaretRight, CaretDown } from '@phosphor-icons/react'
+import { Plus, Trash, Check, X, PencilSimple, CaretRight, CaretDown, Users, CalendarDots, ChartBar, EnvelopeSimple } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import type { Chapter, ChapterType } from '@/lib/types'
 
@@ -174,6 +174,34 @@ export function ChaptersGrid({ chapters: initialChapters, loading }: ChaptersGri
     setEditableChapters(editableChapters.map(c =>
       c.id === id ? { ...c, [field]: value } : c
     ))
+  }
+
+  const handleViewMembers = (chapter: Chapter) => {
+    toast.info('View Members', {
+      description: `Loading members for ${chapter.name}...`
+    })
+    // TODO: Navigate to members view filtered by this chapter
+  }
+
+  const handleViewEvents = (chapter: Chapter) => {
+    toast.info('View Events', {
+      description: `Loading events for ${chapter.name}...`
+    })
+    // TODO: Navigate to events view filtered by this chapter
+  }
+
+  const handleViewFinancials = (chapter: Chapter) => {
+    toast.info('View Financials', {
+      description: `Loading financial report for ${chapter.name}...`
+    })
+    // TODO: Navigate to finance view filtered by this chapter
+  }
+
+  const handleMessageLeaders = (chapter: Chapter) => {
+    toast.success('Message Leaders', {
+      description: `Opening message dialog for ${chapter.name} leaders...`
+    })
+    // TODO: Open message composition dialog
   }
 
   const availableParentChapters = useMemo(() => {
