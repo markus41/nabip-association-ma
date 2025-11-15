@@ -1,4 +1,4 @@
-import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report, Credential } from './types'
+import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report, Credential, User, AuditLog, SystemConfig, Integration, UserRole } from './types'
 
 const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 'William', 'Barbara', 'David', 'Elizabeth', 'Richard', 'Susan', 'Joseph', 'Jessica', 'Thomas', 'Sarah', 'Charles', 'Karen']
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin']
@@ -618,4 +618,239 @@ export function generateReports(count: number): Report[] {
   }
   
   return reports
+}
+
+export function generateUsers(count: number): User[] {
+  const users: User[] = []
+  const roles: UserRole[] = ['member', 'chapter_admin', 'state_admin', 'national_admin']
+  const roleWeights = [0.7, 0.2, 0.08, 0.02] // More members, fewer admins
+  
+  for (let i = 0; i < count; i++) {
+    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)]
+    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)]
+    
+    // Weighted random role selection
+    const rand = Math.random()
+    let role: UserRole = 'member'
+    let cumulative = 0
+    for (let j = 0; j < roles.length; j++) {
+      cumulative += roleWeights[j]
+      if (rand < cumulative) {
+        role = roles[j]
+        break
+      }
+    }
+    
+    users.push({
+      id: generateId(),
+      email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+      name: `${firstName} ${lastName}`,
+      role,
+      memberId: role === 'member' ? `member-${Math.floor(Math.random() * 1000)}` : undefined,
+      chapterId: role === 'chapter_admin' ? `chapter-${Math.floor(Math.random() * 50) + 1}` : undefined,
+      stateId: role === 'state_admin' ? `state-${Math.floor(Math.random() * 20) + 1}` : undefined,
+      createdAt: new Date(Date.now() - Math.random() * 730 * 24 * 60 * 60 * 1000).toISOString(),
+      lastLoginAt: Math.random() > 0.2 ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString() : undefined,
+      isActive: Math.random() > 0.05
+    })
+  }
+  
+  return users
+}
+
+export function generateAuditLogs(count: number): AuditLog[] {
+  const logs: AuditLog[] = []
+  const actions = [
+    'create', 'update', 'delete', 'login', 'logout', 'approve', 'reject', 
+    'export', 'import', 'assign_role', 'revoke_role', 'send_email'
+  ]
+  const entities = ['member', 'chapter', 'event', 'campaign', 'transaction', 'user', 'report', 'course']
+  
+  for (let i = 0; i < count; i++) {
+    const action = actions[Math.floor(Math.random() * actions.length)]
+    const entity = entities[Math.floor(Math.random() * entities.length)]
+    
+    logs.push({
+      id: generateId(),
+      userId: `user-${Math.floor(Math.random() * 100)}`,
+      action,
+      entity,
+      entityId: `${entity}-${Math.floor(Math.random() * 1000)}`,
+      changes: action === 'update' ? { 
+        field: 'status',
+        oldValue: 'pending',
+        newValue: 'active'
+      } : undefined,
+      timestamp: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+      ipAddress: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`
+    })
+  }
+  
+  return logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+}
+
+export function generateSystemConfig(): SystemConfig[] {
+  return [
+    {
+      id: generateId(),
+      category: 'general',
+      key: 'organization_name',
+      value: 'National Association of Benefits and Insurance Professionals',
+      description: 'Organization display name',
+      isPublic: true,
+      lastUpdatedBy: 'Admin User',
+      lastUpdatedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      category: 'general',
+      key: 'timezone',
+      value: 'America/New_York',
+      description: 'Default system timezone',
+      isPublic: false,
+      lastUpdatedBy: 'Admin User',
+      lastUpdatedAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      category: 'email',
+      key: 'smtp_host',
+      value: 'smtp.example.com',
+      description: 'SMTP server hostname',
+      isPublic: false,
+      lastUpdatedBy: 'Admin User',
+      lastUpdatedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      category: 'email',
+      key: 'from_email',
+      value: 'noreply@nabip.org',
+      description: 'Default sender email address',
+      isPublic: false,
+      lastUpdatedBy: 'Admin User',
+      lastUpdatedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      category: 'security',
+      key: 'session_timeout',
+      value: '3600',
+      description: 'Session timeout in seconds',
+      isPublic: false,
+      lastUpdatedBy: 'Security Admin',
+      lastUpdatedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      category: 'security',
+      key: 'password_min_length',
+      value: '12',
+      description: 'Minimum password length',
+      isPublic: false,
+      lastUpdatedBy: 'Security Admin',
+      lastUpdatedAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      category: 'billing',
+      key: 'currency',
+      value: 'USD',
+      description: 'Default currency code',
+      isPublic: true,
+      lastUpdatedBy: 'Finance Admin',
+      lastUpdatedAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      category: 'integrations',
+      key: 'analytics_enabled',
+      value: 'true',
+      description: 'Enable analytics tracking',
+      isPublic: false,
+      lastUpdatedBy: 'Admin User',
+      lastUpdatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ]
+}
+
+export function generateIntegrations(): Integration[] {
+  return [
+    {
+      id: generateId(),
+      name: 'SendGrid',
+      type: 'email',
+      status: 'active',
+      apiKey: 'SG.*********************',
+      config: {
+        dailyLimit: 10000,
+        domain: 'nabip.org',
+        trackOpens: true,
+        trackClicks: true
+      },
+      lastSyncAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      name: 'Stripe',
+      type: 'payment',
+      status: 'active',
+      apiKey: 'sk_test_*********************',
+      webhookUrl: 'https://api.nabip.org/webhooks/stripe',
+      config: {
+        currency: 'USD',
+        enableApplePay: true,
+        enableGooglePay: true
+      },
+      lastSyncAt: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      name: 'Salesforce',
+      type: 'crm',
+      status: 'active',
+      config: {
+        instanceUrl: 'https://nabip.salesforce.com',
+        syncInterval: 'hourly',
+        autoCreateLeads: true
+      },
+      lastSyncAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      name: 'Google Analytics',
+      type: 'analytics',
+      status: 'active',
+      config: {
+        trackingId: 'UA-123456789-1',
+        enableEcommerce: true,
+        enableEvents: true
+      },
+      lastSyncAt: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      name: 'AWS S3',
+      type: 'storage',
+      status: 'active',
+      config: {
+        bucket: 'nabip-documents',
+        region: 'us-east-1',
+        enableCDN: true
+      },
+      lastSyncAt: new Date(Date.now() - 10 * 60 * 1000).toISOString()
+    },
+    {
+      id: generateId(),
+      name: 'MailChimp',
+      type: 'email',
+      status: 'inactive',
+      apiKey: 'mc_*********************',
+      config: {
+        listId: '1234567890',
+        doubleOptIn: true
+      },
+      lastSyncAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ]
 }

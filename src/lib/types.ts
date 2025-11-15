@@ -369,3 +369,41 @@ export interface AuditLog {
   timestamp: string
   ipAddress?: string
 }
+
+export type UserRole = 'member' | 'chapter_admin' | 'state_admin' | 'national_admin'
+
+export interface User {
+  id: string
+  email: string
+  name: string
+  role: UserRole
+  memberId?: string
+  chapterId?: string
+  stateId?: string
+  createdAt: string
+  lastLoginAt?: string
+  isActive: boolean
+}
+
+export interface SystemConfig {
+  id: string
+  category: 'general' | 'email' | 'security' | 'billing' | 'integrations'
+  key: string
+  value: string
+  description: string
+  isPublic: boolean
+  lastUpdatedBy?: string
+  lastUpdatedAt?: string
+}
+
+export interface Integration {
+  id: string
+  name: string
+  type: 'email' | 'payment' | 'crm' | 'analytics' | 'storage'
+  status: 'active' | 'inactive' | 'error'
+  apiKey?: string
+  webhookUrl?: string
+  config: Record<string, any>
+  lastSyncAt?: string
+  errorMessage?: string
+}

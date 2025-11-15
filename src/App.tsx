@@ -13,6 +13,7 @@ import { ChaptersView } from '@/components/features/ChaptersView'
 import { LearningView } from '@/components/features/LearningView'
 import { MemberPortal } from '@/components/features/MemberPortal'
 import { ReportsView } from '@/components/features/ReportsView'
+import { NationalAdminView } from '@/components/features/NationalAdminView'
 import {
   ChartBar,
   UserCircle,
@@ -23,7 +24,8 @@ import {
   Command,
   GraduationCap,
   FileText,
-  House
+  House,
+  Shield
 } from '@phosphor-icons/react'
 import {
   generateMembers,
@@ -34,13 +36,17 @@ import {
   generateCourses,
   generateEnrollments,
   generateReports,
+  generateUsers,
+  generateAuditLogs,
+  generateSystemConfig,
+  generateIntegrations,
   calculateDashboardStats
 } from '@/lib/data-utils'
-import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report } from '@/lib/types'
+import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report, User, AuditLog, SystemConfig, Integration } from '@/lib/types'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 
-type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal'
+type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal' | 'admin'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
@@ -55,6 +61,10 @@ function App() {
   const [courses, setCourses] = useKV<Course[]>('ams-courses', [])
   const [enrollments, setEnrollments] = useKV<Enrollment[]>('ams-enrollments', [])
   const [reports, setReports] = useKV<Report[]>('ams-reports', [])
+  const [users, setUsers] = useKV<User[]>('ams-users', [])
+  const [auditLogs, setAuditLogs] = useKV<AuditLog[]>('ams-audit-logs', [])
+  const [systemConfig, setSystemConfig] = useKV<SystemConfig[]>('ams-system-config', [])
+  const [integrations, setIntegrations] = useKV<Integration[]>('ams-integrations', [])
   
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -110,6 +120,26 @@ function App() {
       if (!reports || reports.length === 0) {
         const newReports = generateReports(20)
         setReports(newReports)
+      }
+      
+      if (!users || users.length === 0) {
+        const newUsers = generateUsers(50)
+        setUsers(newUsers)
+      }
+      
+      if (!auditLogs || auditLogs.length === 0) {
+        const newAuditLogs = generateAuditLogs(100)
+        setAuditLogs(newAuditLogs)
+      }
+      
+      if (!systemConfig || systemConfig.length === 0) {
+        const newConfig = generateSystemConfig()
+        setSystemConfig(newConfig)
+      }
+      
+      if (!integrations || integrations.length === 0) {
+        const newIntegrations = generateIntegrations()
+        setIntegrations(newIntegrations)
       }
       
       setTimeout(() => setIsLoading(false), 500)
@@ -186,6 +216,7 @@ function App() {
     { id: 'chapters', label: 'Chapters', icon: Buildings },
     { id: 'learning', label: 'Learning', icon: GraduationCap },
     { id: 'reports', label: 'Reports', icon: FileText },
+    { id: 'admin', label: 'Admin', icon: Shield },
     { id: 'portal', label: 'My Portal', icon: House }
   ]
 
