@@ -61,6 +61,9 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [builderOpen, setBuilderOpen] = useState(false)
   const [localReports, setLocalReports] = useState(reports)
+  const [reportData, setReportData] = useState<any[]>([])
+  const [isRunning, setIsRunning] = useState(false)
+  const [activeTab, setActiveTab] = useState<'details' | 'preview'>('details')
 
   const filteredReports = useMemo(() => {
     return localReports.filter(report => {
@@ -78,10 +81,105 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
     setLocalReports([...localReports, report])
   }
 
-  const handleRunReport = (report: Report) => {
-    toast.success(`Running report: ${report.name}`, {
-      description: 'Your report will be ready in a moment.'
+  const generateReportData = (report: Report, rowCount: number = 50) => {
+    const data: any[] = []
+    
+    if (!report.columns || report.columns.length === 0) {
+      return data
+    }
+
+    for (let i = 0; i < rowCount; i++) {
+      const row: any = { id: i + 1 }
+      
+      report.columns.forEach(column => {
+        switch (column.type) {
+          case 'string':
+            if (column.field.includes('name') || column.field.includes('Name')) {
+              const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda']
+              const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis']
+              row[column.field] = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`
+            } else if (column.field.includes('email') || column.field.includes('Email')) {
+              row[column.field] = `user${i + 1}@example.com`
+            } else if (column.field.includes('status') || column.field.includes('Status')) {
+              row[column.field] = ['Active', 'Pending', 'Completed'][Math.floor(Math.random() * 3)]
+            } else if (column.field.includes('type') || column.field.includes('Type')) {
+              row[column.field] = ['Individual', 'Organizational', 'Student'][Math.floor(Math.random() * 3)]
+            } else if (column.field.includes('chapter') || column.field.includes('Chapter')) {
+              row[column.field] = ['California', 'Texas', 'Florida', 'New York'][Math.floor(Math.random() * 4)]
+            } else {
+              row[column.field] = `Sample ${column.label}`
+            }
+            break
+          
+          case 'number':
+            if (column.field.includes('amount') || column.field.includes('revenue') || column.field.includes('price')) {
+              row[column.field] = Math.floor(Math.random() * 10000) + 1000
+            } else if (column.field.includes('count') || column.field.includes('Count')) {
+              row[column.field] = Math.floor(Math.random() * 100) + 1
+            } else if (column.field.includes('score') || column.field.includes('Score')) {
+              row[column.field] = Math.floor(Math.random() * 100)
+            } else {
+              row[column.field] = Math.floor(Math.random() * 1000)
+            }
+            break
+          
+          case 'date':
+            const randomDate = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000)
+            row[column.field] = randomDate.toLocaleDateString()
+            break
+          
+          default:
+            row[column.field] = `Data ${i + 1}`
+        }
+      })
+      
+      data.push(row)
+    }
+    
+    return data
+  }
+
+  const handleRunReport = async (report: Report) => {
+    setIsRunning(true)
+    
+    toast.info(`Running report: ${report.name}`, {
+      description: 'Generating report data...'
     })
+
+    // Simulate report generation delay
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    try {
+      // Generate actual report data
+      const data = generateReportData(report, 50)
+      setReportData(data)
+
+      // Update the report's last run date
+      const updatedReports = localReports.map(r => 
+        r.id === report.id 
+          ? { ...r, lastRunDate: new Date().toISOString() }
+          : r
+      )
+      setLocalReports(updatedReports)
+
+      // Update selected report
+      if (selectedReport?.id === report.id) {
+        setSelectedReport({ ...report, lastRunDate: new Date().toISOString() })
+      }
+
+      // Switch to preview tab to show results
+      setActiveTab('preview')
+
+      toast.success(`Report completed: ${report.name}`, {
+        description: `Generated ${data.length} rows of data.`
+      })
+    } catch (error) {
+      toast.error('Failed to run report', {
+        description: 'An error occurred while generating the report.'
+      })
+    } finally {
+      setIsRunning(false)
+    }
   }
 
   const handleExportReport = (report: Report, format: string) => {
@@ -365,7 +463,11 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                     <TableRow
                       key={report.id}
                       className="cursor-pointer"
-                      onClick={() => setSelectedReport(report)}
+                      onClick={() => {
+                        setSelectedReport(report)
+                        setActiveTab('details')
+                        setReportData([])
+                      }}
                     >
                       <TableCell>
                         <div>
@@ -425,14 +527,20 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
+      <Dialog open={!!selectedReport} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedReport(null)
+          setActiveTab('details')
+          setReportData([])
+        }
+      }}>
         <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedReport?.name}</DialogTitle>
             <DialogDescription>Report details and configuration</DialogDescription>
           </DialogHeader>
           {selectedReport && (
-            <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'details' | 'preview')} className="flex-1 flex flex-col overflow-hidden">
               <TabsList className="shrink-0">
                 <TabsTrigger value="details" className="gap-2">
                   <FileText size={16} />
@@ -550,49 +658,81 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                       </div>
                     </div>
 
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>ID</TableHead>
-                          {selectedReport.columns?.slice(0, 5).map((col, idx) => (
-                            <TableHead key={idx}>{col.label}</TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Array.from({ length: 10 }).map((_, rowIdx) => (
-                          <TableRow key={rowIdx}>
-                            <TableCell className="font-medium">#{rowIdx + 1}</TableCell>
-                            {selectedReport.columns?.slice(0, 5).map((col, colIdx) => (
-                              <TableCell key={colIdx}>
-                                {col.type === 'number'
-                                  ? Math.floor(Math.random() * 1000)
-                                  : col.type === 'date'
-                                  ? new Date(Date.now() - Math.random() * 10000000000).toLocaleDateString()
-                                  : `Sample ${col.label}`}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-
-                    <div className="mt-4 text-sm text-muted-foreground">
-                      Showing 10 sample rows. Run report to see actual data.
-                    </div>
+                    {reportData.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">
+                            Showing {reportData.length} rows
+                          </p>
+                          <Badge variant="outline" className="bg-teal/10 text-teal border-teal/20">
+                            Last run: {selectedReport.lastRunDate ? formatDate(selectedReport.lastRunDate) : 'Just now'}
+                          </Badge>
+                        </div>
+                        <div className="max-h-[400px] overflow-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>ID</TableHead>
+                                {selectedReport.columns?.map((col, idx) => (
+                                  <TableHead key={idx}>{col.label}</TableHead>
+                                ))}
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {reportData.slice(0, 50).map((row, rowIdx) => (
+                                <TableRow key={rowIdx}>
+                                  <TableCell className="font-medium">#{row.id}</TableCell>
+                                  {selectedReport.columns?.map((col, colIdx) => (
+                                    <TableCell key={colIdx}>
+                                      {col.type === 'number' && typeof row[col.field] === 'number'
+                                        ? row[col.field].toLocaleString()
+                                        : row[col.field]}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <ChartBar size={48} className="mx-auto text-muted-foreground mb-4 opacity-50" />
+                        <p className="text-muted-foreground text-lg font-medium mb-2">
+                          No data generated yet
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Click "Run Report" below to generate the report with actual data
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </TabsContent>
 
               <div className="flex flex-wrap gap-2 pt-4 border-t shrink-0 mt-4">
-                <Button className="flex-1 min-w-[140px]" onClick={() => handleRunReport(selectedReport)}>
-                  <Play size={18} weight="bold" />
-                  <span className="ml-2">Run Report</span>
+                <Button 
+                  className="flex-1 min-w-[140px]" 
+                  onClick={() => handleRunReport(selectedReport)}
+                  disabled={isRunning}
+                >
+                  {isRunning ? (
+                    <>
+                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full" />
+                      <span className="ml-2">Running...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play size={18} weight="bold" />
+                      <span className="ml-2">Run Report</span>
+                    </>
+                  )}
                 </Button>
                 <Button
                   variant="outline"
                   className="flex-1 min-w-[100px]"
                   onClick={() => handleExportReport(selectedReport, 'csv')}
+                  disabled={isRunning || reportData.length === 0}
                 >
                   <Download size={18} />
                   <span className="ml-2">CSV</span>
@@ -601,6 +741,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                   variant="outline"
                   className="flex-1 min-w-[100px]"
                   onClick={() => handleExportReport(selectedReport, 'excel')}
+                  disabled={isRunning || reportData.length === 0}
                 >
                   <Download size={18} />
                   <span className="ml-2">Excel</span>
@@ -609,6 +750,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                   variant="outline"
                   className="flex-1 min-w-[100px]"
                   onClick={() => handleExportReport(selectedReport, 'pdf')}
+                  disabled={isRunning || reportData.length === 0}
                 >
                   <Download size={18} />
                   <span className="ml-2">PDF</span>
