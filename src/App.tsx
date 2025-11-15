@@ -17,6 +17,7 @@ const LearningView = lazy(() => import('@/components/features/LearningView'))
 const MemberPortal = lazy(() => import('@/components/features/MemberPortal'))
 const ReportsView = lazy(() => import('@/components/features/ReportsView'))
 const AddMemberDialog = lazy(() => import('@/components/features/AddMemberDialog'))
+const LoginScreen = lazy(() => import('@/components/features/LoginScreen'))
 import {
   ChartBar,
   UserCircle,
@@ -56,8 +57,9 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
   const [showEventCreationDialog, setShowEventCreationDialog] = useState(false)
-  const { user } = useAuth()
-  
+  const { user, isLoading: authLoading } = useAuth()
+
+  // All hooks must be called before any conditional returns
   const [members, setMembers] = useKV<Member[]>('ams-members', [])
   const [chapters, setChapters] = useKV<Chapter[]>('ams-chapters', [])
   const [events, setEvents] = useKV<Event[]>('ams-events', [])
@@ -67,7 +69,6 @@ function App() {
   const [courses, setCourses] = useKV<Course[]>('ams-courses', [])
   const [enrollments, setEnrollments] = useKV<Enrollment[]>('ams-enrollments', [])
   const [reports, setReports] = useKV<Report[]>('ams-reports', [])
-  
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
     activeMembers: 0,
@@ -80,6 +81,31 @@ function App() {
     pendingRenewals: 0,
     expiringSoon: 0
   })
+
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show login screen if not authenticated
+  if (!user) {
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      }>
+        <LoginScreen />
+      </Suspense>
+    )
+  }
 
   useEffect(() => {
     const initializeData = async () => {
@@ -394,14 +420,22 @@ function App() {
         </aside>
 
         <main className="flex-1 p-6 lg:p-8 pb-24 lg:pb-8 overflow-y-auto">
-          {currentView === 'dashboard' && (
-            <DashboardView
-              stats={stats}
-              upcomingEvents={upcomingEvents}
-              recentTransactions={(transactions || []).slice(0, 8)}
-              loading={isLoading}
-            />
-          )}
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-muted-foreground text-sm">Loading...</p>
+              </div>
+            </div>
+          }>
+            {currentView === 'dashboard' && (
+              <DashboardView
+                stats={stats}
+                upcomingEvents={upcomingEvents}
+                recentTransactions={(transactions || []).slice(0, 8)}
+                loading={isLoading}
+              />
+            )}
           {currentView === 'members' && (
             <MembersView
               members={members || []}
@@ -468,9 +502,10 @@ function App() {
               chapters={chapters || []}
             />
           )}
-          {currentView === 'portal' && (
-            <MemberPortal memberId="current-member-id" />
-          )}
+            {currentView === 'portal' && (
+              <MemberPortal memberId="current-member-id" />
+            )}
+          </Suspense>
         </main>
       </div>
 
@@ -499,18 +534,20 @@ function App() {
       </div>
 
       <CommandPalette onNavigate={handleNavigate} />
-      <AddMemberDialog
-        open={showAddMemberDialog}
-        onOpenChange={setShowAddMemberDialog}
-        onAddMember={handleMemberAdded}
-        chapters={chapters || []}
-      />
-      <EventCreationDialog
-        open={showEventCreationDialog}
-        onOpenChange={setShowEventCreationDialog}
-        onCreateEvent={handleCreateEvent}
-        chapters={(chapters || []).map(c => ({ id: c.id, name: c.name }))}
-      />
+      <Suspense fallback={null}>
+        <AddMemberDialog
+          open={showAddMemberDialog}
+          onOpenChange={setShowAddMemberDialog}
+          onAddMember={handleMemberAdded}
+          chapters={chapters || []}
+        />
+        <EventCreationDialog
+          open={showEventCreationDialog}
+          onOpenChange={setShowEventCreationDialog}
+          onCreateEvent={handleCreateEvent}
+          chapters={(chapters || []).map(c => ({ id: c.id, name: c.name }))}
+        />
+      </Suspense>
       <Toaster />
     </div>
   )

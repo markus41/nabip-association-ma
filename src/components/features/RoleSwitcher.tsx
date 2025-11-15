@@ -1,5 +1,5 @@
 import { useAuth } from '@/lib/auth/AuthContext'
-import { Role } from '@/lib/rbac/permissions'
+import { RoleName } from '@/lib/rbac/types'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -14,22 +14,22 @@ import { UserCircle, CaretDown } from '@phosphor-icons/react'
 export function RoleSwitcher() {
   const { user, setUser } = useAuth()
 
-  const switchRole = (role: Role) => {
+  const switchRole = (role: RoleName) => {
     if (!user) return
 
     let updatedUser = { ...user, role }
 
     // Set appropriate chapter IDs based on role
     switch (role) {
-      case Role.CHAPTER_ADMIN:
+      case 'chapter_admin':
         updatedUser.chapterId = 'chapter-local-ca-1'
         delete updatedUser.stateChapterId
         break
-      case Role.STATE_ADMIN:
+      case 'state_admin':
         updatedUser.stateChapterId = 'chapter-state-ca'
         delete updatedUser.chapterId
         break
-      case Role.NATIONAL_ADMIN:
+      case 'national_admin':
         delete updatedUser.chapterId
         delete updatedUser.stateChapterId
         break
@@ -43,12 +43,11 @@ export function RoleSwitcher() {
 
   if (!user) return null
 
-  const roleLabels: Record<Role, string> = {
-    [Role.NATIONAL_ADMIN]: 'National Admin',
-    [Role.STATE_ADMIN]: 'State Admin',
-    [Role.CHAPTER_ADMIN]: 'Chapter Admin',
-    [Role.MEMBER]: 'Member',
-    [Role.GUEST]: 'Guest',
+  const roleLabels: Record<string, string> = {
+    'national_admin': 'National Admin',
+    'state_admin': 'State Admin',
+    'chapter_admin': 'Chapter Admin',
+    'member': 'Member',
   }
 
   return (
@@ -66,7 +65,7 @@ export function RoleSwitcher() {
         {Object.entries(roleLabels).map(([role, label]) => (
           <DropdownMenuItem
             key={role}
-            onClick={() => switchRole(role as Role)}
+            onClick={() => switchRole(role as RoleName)}
             disabled={user.role === role}
           >
             {label}

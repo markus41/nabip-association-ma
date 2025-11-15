@@ -71,7 +71,14 @@
       "Bash(netstat:*)",
       "mcp__vercel__get_deployment_build_logs",
       "Bash(.env.local)",
-      "Bash(taskkill /F /PID 17396)"
+      "Bash(taskkill /F /PID 17396)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(taskkill:*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(for batch in supabase/migrations/member_batches/members_batch_*.sql)",
+      "Bash(do echo \"Processing: $batch\")"
     ],
     "deny": [],
     "ask": []

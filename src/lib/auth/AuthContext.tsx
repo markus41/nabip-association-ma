@@ -27,17 +27,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
  */
 async function mapAuthUserToUser(authUser: SupabaseUser): Promise<User | null> {
   try {
+    console.log('[mapAuthUserToUser] Starting to map user:', authUser.email)
     if (!authUser.email) {
-      console.error('Auth user has no email')
+      console.error('[mapAuthUserToUser] Auth user has no email')
       return null
     }
 
     // Query members table to get member data
+    console.log('[mapAuthUserToUser] Querying members table for:', authUser.email)
     const { data: member, error } = await supabase
       .from('members')
-      .select('id, first_name, last_name, email, chapter_id, metadata')
+      .select('id, first_name, last_name, email, chapter_id, custom_fields')
       .eq('email', authUser.email)
       .maybeSingle()
+
+    console.log('[mapAuthUserToUser] Members query result:', { member, error })
 
     if (error) {
       console.error('Failed to fetch member data:', error)
@@ -49,13 +53,13 @@ async function mapAuthUserToUser(authUser: SupabaseUser): Promise<User | null> {
       return null
     }
 
-    // Determine role from metadata or default to 'member'
+    // Determine role from custom_fields or default to 'member'
     // In production, this would check a roles table or use RLS functions
-    const metadata = member.metadata as Record<string, any> | null
+    const customFields = member.custom_fields as Record<string, any> | null
     let role: RoleName = 'member'
 
-    if (metadata?.role) {
-      role = metadata.role as RoleName
+    if (customFields?.role) {
+      role = customFields.role as RoleName
     } else {
       // Check if user is an admin using RLS functions
       const { data: isNationalAdmin } = await supabase.rpc('is_national_admin_member')
@@ -118,13 +122,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state and set up listener
   useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        mapAuthUserToUser(session.user).then(setUserState)
-      }
+    console.log('[AuthContext] Initializing auth check...')
+
+    // Add timeout to prevent infinite loading if Supabase hangs
+    const timeout = setTimeout(() => {
+      console.error('[AuthContext] Session check timed out after 5 seconds')
       setIsLoading(false)
-    })
+    }, 5000)
+
+    // Check current session
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        clearTimeout(timeout)
+        console.log('[AuthContext] getSession completed. Session:', session ? 'exists' : 'null')
+        if (session?.user) {
+          console.log('[AuthContext] Session user found, mapping to app user...')
+          mapAuthUserToUser(session.user).then(appUser => {
+            console.log('[AuthContext] User mapped:', appUser)
+            setUserState(appUser)
+            setIsLoading(false)
+          }).catch(err => {
+            console.error('[AuthContext] Error mapping user:', err)
+            setUserState(null)
+            setIsLoading(false)
+          })
+        } else {
+          console.log('[AuthContext] No session found, setting loading to false')
+          setIsLoading(false)
+        }
+      })
+      .catch(err => {
+        clearTimeout(timeout)
+        console.error('[AuthContext] getSession error:', err)
+        setIsLoading(false)
+      })
 
     // Listen for auth changes
     const {
@@ -145,21 +176,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
+      console.log('[login] Attempting login for:', email)
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
+        console.error('[login] Auth error:', error)
         throw error
       }
 
+      console.log('[login] Auth successful, mapping user...')
+
       if (data.user) {
-        const appUser = await mapAuthUserToUser(data.user)
+        // Add timeout for user mapping
+        const mappingPromise = mapAuthUserToUser(data.user)
+        const timeoutPromise = new Promise<null>((_, reject) => {
+          setTimeout(() => reject(new Error('User mapping timed out after 10 seconds')), 10000)
+        })
+
+        const appUser = await Promise.race([mappingPromise, timeoutPromise])
+        console.log('[login] User mapped successfully:', appUser)
         setUserState(appUser)
       }
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('[login] Login error:', error)
+      setIsLoading(false)
       throw error
     } finally {
       setIsLoading(false)
