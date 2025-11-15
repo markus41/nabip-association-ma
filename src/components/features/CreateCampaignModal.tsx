@@ -40,6 +40,20 @@ const campaignSchema = z.object({
   segmentQuery: z.string().min(1, 'Segment query is required'),
   status: z.enum(['draft', 'scheduled', 'sending', 'sent'] as const).default('draft'),
   scheduledDate: z.string().optional(),
+}).refine((data) => {
+  // If status is scheduled, scheduledDate is required and must be in the future
+  if (data.status === 'scheduled') {
+    if (!data.scheduledDate) {
+      return false
+    }
+    const scheduledDateTime = new Date(data.scheduledDate)
+    const now = new Date()
+    return scheduledDateTime > now
+  }
+  return true
+}, {
+  message: 'Scheduled campaigns must have a future date',
+  path: ['scheduledDate'],
 })
 
 type CampaignFormData = z.infer<typeof campaignSchema>
@@ -49,6 +63,17 @@ interface CreateCampaignModalProps {
   onOpenChange: (open: boolean) => void
   onCreateCampaign: (campaign: Campaign) => void
 }
+
+/**
+ * Modal component for creating new email campaigns.
+ *
+ * Features:
+ * - Comprehensive form validation with Zod schema
+ * - Support for draft and scheduled campaigns
+ * - Character counters for text inputs
+ * - Future date validation for scheduled campaigns
+ * - Accessible form controls with proper labels and descriptions
+ */
 
 export function CreateCampaignModal({
   open,
@@ -73,9 +98,6 @@ export function CreateCampaignModal({
     setIsSubmitting(true)
 
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
       const newCampaign: Campaign = {
         id: uuidv4(),
         name: data.name,
@@ -157,7 +179,7 @@ export function CreateCampaignModal({
                     />
                   </FormControl>
                   <FormDescription>
-                    The subject line recipients will see
+                    The subject line recipients will see ({field.value.length}/200 characters)
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -178,7 +200,7 @@ export function CreateCampaignModal({
                     />
                   </FormControl>
                   <FormDescription>
-                    The body of your email campaign
+                    The body of your email campaign ({field.value.length}/10000 characters)
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

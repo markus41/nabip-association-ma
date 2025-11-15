@@ -162,7 +162,8 @@ function App() {
   }
 
   const handleCreateCampaign = (newCampaign: Campaign) => {
-    const updatedCampaigns = [...(campaigns || []), newCampaign]
+    // Add new campaign at the beginning so it appears first in the list
+    const updatedCampaigns = [newCampaign, ...(campaigns || [])]
     setCampaigns(updatedCampaigns)
   }
 
