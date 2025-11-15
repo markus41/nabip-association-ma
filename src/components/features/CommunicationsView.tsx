@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -24,11 +25,16 @@ import {
   PaperPlaneRight,
   ChartLine,
   Users,
-  CalendarBlank
+  CalendarBlank,
+  Trash,
+  Copy,
+  Clock
 } from '@phosphor-icons/react'
 import type { Campaign } from '@/lib/types'
 import { formatDate, getStatusColor } from '@/lib/data-utils'
 import { toast } from 'sonner'
+import { useBulkSelection } from '@/hooks/useBulkSelection'
+import { BulkActionToolbar } from './BulkActionToolbar'
 
 interface CommunicationsViewProps {
   campaigns: Campaign[]
@@ -65,10 +71,42 @@ export function CommunicationsView({ campaigns, onNewCampaign, loading }: Commun
     })
   }, [campaigns])
 
+  const {
+    selectedCount,
+    selectedItems,
+    isSelected,
+    toggleSelection,
+    toggleAll,
+    clearSelection,
+    isAllSelected,
+    isSomeSelected,
+  } = useBulkSelection(sortedCampaigns)
+
   const handleSendTest = () => {
     toast.success('Test email sent', {
       description: 'Check your inbox for the test email.'
     })
+  }
+
+  const handleBulkSchedule = () => {
+    toast.success(`Scheduling ${selectedCount} campaigns`, {
+      description: 'Campaigns will be sent at their scheduled times.'
+    })
+    clearSelection()
+  }
+
+  const handleBulkDuplicate = () => {
+    toast.success(`Duplicating ${selectedCount} campaigns`, {
+      description: 'New draft campaigns created.'
+    })
+    clearSelection()
+  }
+
+  const handleBulkDelete = () => {
+    toast.success(`Deleting ${selectedCount} campaigns`, {
+      description: 'Selected campaigns will be removed.'
+    })
+    clearSelection()
   }
 
   return (
@@ -236,6 +274,14 @@ export function CommunicationsView({ campaigns, onNewCampaign, loading }: Commun
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={isAllSelected}
+                  onCheckedChange={toggleAll}
+                  aria-label="Select all campaigns"
+                  className={isSomeSelected && !isAllSelected ? 'data-[state=checked]:bg-primary/50' : ''}
+                />
+              </TableHead>
               <TableHead>Campaign</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Recipients</TableHead>
@@ -248,7 +294,7 @@ export function CommunicationsView({ campaigns, onNewCampaign, loading }: Commun
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 6 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 bg-muted animate-shimmer rounded w-full" />
                     </TableCell>
@@ -257,7 +303,7 @@ export function CommunicationsView({ campaigns, onNewCampaign, loading }: Commun
               ))
             ) : sortedCampaigns.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12">
+                <TableCell colSpan={7} className="text-center py-12">
                   <EnvelopeSimple size={48} className="mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground">No campaigns yet</p>
                 </TableCell>
@@ -266,9 +312,22 @@ export function CommunicationsView({ campaigns, onNewCampaign, loading }: Commun
               sortedCampaigns.map((campaign) => (
                 <TableRow
                   key={campaign.id}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedCampaign(campaign)}
+                  className={`cursor-pointer ${isSelected(campaign.id) ? 'bg-muted/50' : ''}`}
+                  onClick={(e) => {
+                    // Don't trigger row click when clicking checkbox
+                    if ((e.target as HTMLElement).closest('[role="checkbox"]')) {
+                      return
+                    }
+                    setSelectedCampaign(campaign)
+                  }}
                 >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected(campaign.id)}
+                      onCheckedChange={() => toggleSelection(campaign.id)}
+                      aria-label={`Select ${campaign.name}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div>
                       <p className="font-medium">{campaign.name}</p>
@@ -428,6 +487,21 @@ export function CommunicationsView({ campaigns, onNewCampaign, loading }: Commun
           )}
         </DialogContent>
       </Dialog>
+
+      <BulkActionToolbar selectedCount={selectedCount} onClear={clearSelection}>
+        <Button variant="outline" size="sm" onClick={handleBulkSchedule}>
+          <Clock size={16} className="mr-2" />
+          Schedule
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleBulkDuplicate}>
+          <Copy size={16} className="mr-2" />
+          Duplicate
+        </Button>
+        <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+          <Trash size={16} className="mr-2" />
+          Delete
+        </Button>
+      </BulkActionToolbar>
     </div>
   )
 }

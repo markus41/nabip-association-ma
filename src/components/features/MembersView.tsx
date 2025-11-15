@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -25,10 +26,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { MagnifyingGlass, Plus, Funnel, Download, UserCircle } from '@phosphor-icons/react'
+import { MagnifyingGlass, Plus, Funnel, Download, UserCircle, Trash, EnvelopeSimple } from '@phosphor-icons/react'
 import type { Member } from '@/lib/types'
 import { formatDate, getStatusColor } from '@/lib/data-utils'
 import { toast } from 'sonner'
+import { useBulkSelection } from '@/hooks/useBulkSelection'
+import { BulkActionToolbar } from './BulkActionToolbar'
 
 interface MembersViewProps {
   members: Member[]
@@ -57,6 +60,19 @@ export function MembersView({ members, onAddMember, loading }: MembersViewProps)
     })
   }, [members, searchQuery, statusFilter, typeFilter])
 
+  const displayedMembers = useMemo(() => filteredMembers.slice(0, 50), [filteredMembers])
+
+  const {
+    selectedCount,
+    selectedItems,
+    isSelected,
+    toggleSelection,
+    toggleAll,
+    clearSelection,
+    isAllSelected,
+    isSomeSelected,
+  } = useBulkSelection(displayedMembers)
+
   const stats = useMemo(() => {
     const active = members.filter(m => m.status === 'active').length
     const pending = members.filter(m => m.status === 'pending').length
@@ -81,6 +97,27 @@ export function MembersView({ members, onAddMember, loading }: MembersViewProps)
     toast.success('Exporting members data...', {
       description: 'Your CSV file will download shortly.'
     })
+  }
+
+  const handleBulkDelete = () => {
+    toast.success(`Deleting ${selectedCount} members`, {
+      description: 'Selected members will be removed from the system.'
+    })
+    clearSelection()
+  }
+
+  const handleBulkEmail = () => {
+    toast.success(`Composing email to ${selectedCount} members`, {
+      description: 'Opening email composer...'
+    })
+    clearSelection()
+  }
+
+  const handleBulkExport = () => {
+    toast.success(`Exporting ${selectedCount} selected members`, {
+      description: 'Your CSV file will download shortly.'
+    })
+    clearSelection()
   }
 
   return (
@@ -216,6 +253,14 @@ export function MembersView({ members, onAddMember, loading }: MembersViewProps)
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={isAllSelected}
+                  onCheckedChange={toggleAll}
+                  aria-label="Select all members"
+                  className={isSomeSelected && !isAllSelected ? 'data-[state=checked]:bg-primary/50' : ''}
+                />
+              </TableHead>
               <TableHead>Member</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
@@ -228,7 +273,7 @@ export function MembersView({ members, onAddMember, loading }: MembersViewProps)
             {loading ? (
               Array.from({ length: 10 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 6 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 bg-muted animate-shimmer rounded w-full" />
                     </TableCell>
@@ -237,18 +282,31 @@ export function MembersView({ members, onAddMember, loading }: MembersViewProps)
               ))
             ) : filteredMembers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12">
+                <TableCell colSpan={7} className="text-center py-12">
                   <UserCircle size={48} className="mx-auto text-muted-foreground mb-2" />
                   <p className="text-muted-foreground">No members found</p>
                 </TableCell>
               </TableRow>
             ) : (
-              filteredMembers.slice(0, 50).map((member) => (
+              displayedMembers.map((member) => (
                 <TableRow
                   key={member.id}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedMember(member)}
+                  className={`cursor-pointer ${isSelected(member.id) ? 'bg-muted/50' : ''}`}
+                  onClick={(e) => {
+                    // Don't trigger row click when clicking checkbox
+                    if ((e.target as HTMLElement).closest('[role="checkbox"]')) {
+                      return
+                    }
+                    setSelectedMember(member)
+                  }}
                 >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSelected(member.id)}
+                      onCheckedChange={() => toggleSelection(member.id)}
+                      aria-label={`Select ${member.firstName} ${member.lastName}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div>
                       <p className="font-medium">
@@ -362,6 +420,21 @@ export function MembersView({ members, onAddMember, loading }: MembersViewProps)
           )}
         </DialogContent>
       </Dialog>
+
+      <BulkActionToolbar selectedCount={selectedCount} onClear={clearSelection}>
+        <Button variant="outline" size="sm" onClick={handleBulkEmail}>
+          <EnvelopeSimple size={16} className="mr-2" />
+          Email
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleBulkExport}>
+          <Download size={16} className="mr-2" />
+          Export
+        </Button>
+        <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+          <Trash size={16} className="mr-2" />
+          Delete
+        </Button>
+      </BulkActionToolbar>
     </div>
   )
 }

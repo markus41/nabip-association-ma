@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -37,12 +38,16 @@ import {
   Clock,
   CalendarBlank,
   WarningCircle,
-  Users
+  Users,
+  Trash,
+  Copy
 } from '@phosphor-icons/react'
 import type { Event, Member } from '@/lib/types'
 import { formatDate, formatCurrency, getStatusColor } from '@/lib/data-utils'
 import { toast } from 'sonner'
 import { QuickRegistrationWidget } from './QuickRegistrationWidget'
+import { useBulkSelection } from '@/hooks/useBulkSelection'
+import { BulkActionToolbar } from './BulkActionToolbar'
 
 interface EventsViewProps {
   events: Event[]
@@ -67,6 +72,14 @@ export function EventsView({ events, members = [], onAddEvent, loading }: Events
       return matchesSearch && matchesStatus
     })
   }, [events, searchQuery, statusFilter])
+
+  const {
+    selectedCount,
+    selectedItems,
+    isSelected,
+    toggleSelection,
+    clearSelection,
+  } = useBulkSelection(filteredEvents)
 
   const getSimilarEvents = (event: Event): Event[] => {
     return events
@@ -121,6 +134,27 @@ export function EventsView({ events, members = [], onAddEvent, loading }: Events
     toast.success('Email Composer', {
       description: 'Opening email tool to contact attendees...'
     })
+  }
+
+  const handleBulkPublish = () => {
+    toast.success(`Publishing ${selectedCount} events`, {
+      description: 'Selected events will be made public.'
+    })
+    clearSelection()
+  }
+
+  const handleBulkCancel = () => {
+    toast.success(`Cancelling ${selectedCount} events`, {
+      description: 'Selected events will be cancelled.'
+    })
+    clearSelection()
+  }
+
+  const handleBulkDuplicate = () => {
+    toast.success(`Duplicating ${selectedCount} events`, {
+      description: 'New draft events created.'
+    })
+    clearSelection()
   }
 
   const getDaysUntil = (dateString: string): number => {
@@ -356,8 +390,16 @@ export function EventsView({ events, members = [], onAddEvent, loading }: Events
             return (
               <Card
                 key={event.id}
-                className={`group relative overflow-hidden transition-all cursor-pointer ${bgColor}`}
-                onClick={() => handleViewDetails(event)}
+                className={`group relative overflow-hidden transition-all cursor-pointer ${bgColor} ${
+                  isSelected(event.id) ? 'ring-2 ring-primary' : ''
+                }`}
+                onClick={(e) => {
+                  // Don't trigger card click when clicking checkbox
+                  if ((e.target as HTMLElement).closest('[role="checkbox"]')) {
+                    return
+                  }
+                  handleViewDetails(event)
+                }}
               >
                 <div
                   className={`absolute top-0 left-0 w-1 h-full ${
@@ -368,6 +410,15 @@ export function EventsView({ events, members = [], onAddEvent, loading }: Events
                       : 'bg-green-500'
                   }`}
                 />
+
+                <div className="absolute top-4 right-4 z-10" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={isSelected(event.id)}
+                    onCheckedChange={() => toggleSelection(event.id)}
+                    aria-label={`Select ${event.name}`}
+                    className="bg-white shadow-md"
+                  />
+                </div>
 
                 <div className="p-6 space-y-4">
                   <div className="flex items-start justify-between gap-4">
@@ -615,6 +666,21 @@ export function EventsView({ events, members = [], onAddEvent, loading }: Events
           )}
         </DialogContent>
       </Dialog>
+
+      <BulkActionToolbar selectedCount={selectedCount} onClear={clearSelection}>
+        <Button variant="outline" size="sm" onClick={handleBulkPublish}>
+          <CheckCircle size={16} className="mr-2" />
+          Publish
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleBulkDuplicate}>
+          <Copy size={16} className="mr-2" />
+          Duplicate
+        </Button>
+        <Button variant="destructive" size="sm" onClick={handleBulkCancel}>
+          <Trash size={16} className="mr-2" />
+          Cancel
+        </Button>
+      </BulkActionToolbar>
     </div>
   )
 }
