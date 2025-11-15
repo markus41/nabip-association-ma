@@ -1,6 +1,7 @@
 import { StatCard } from './StatCard'
 import { PersonalizedGreeting } from './PersonalizedGreeting'
 import { SmartNotifications, SmartNotificationData } from './SmartNotification'
+import { MemberGrowthChart } from './MemberGrowthChart'
 import { UserCircle, CalendarDots, CurrencyDollar, EnvelopeSimple, Users, Warning } from '@phosphor-icons/react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -292,30 +293,18 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CustomLineChart
-          data={memberTrendData}
-          lines={[
-            { dataKey: 'active', name: 'Active Members', color: 'oklch(0.25 0.05 250)' },
-            { dataKey: 'pending', name: 'Pending Approvals', color: 'oklch(0.60 0.12 200)' },
-          ]}
-          xAxisKey="month"
-          title="Member Trends"
-          description="Six-month membership growth and pending applications"
-          loading={loading}
-        />
+      <MemberGrowthChart loading={loading} />
 
-        <CustomBarChart
-          data={revenueByTypeData}
-          bars={[
-            { dataKey: 'amount', name: 'Revenue', color: 'oklch(0.25 0.05 250)' },
-          ]}
-          xAxisKey="type"
-          title="Revenue Sources"
-          description="YTD revenue breakdown by category"
-          loading={loading}
-        />
-      </div>
+      <CustomBarChart
+        data={revenueByTypeData}
+        bars={[
+          { dataKey: 'amount', name: 'Revenue', color: 'oklch(0.25 0.05 250)' },
+        ]}
+        xAxisKey="type"
+        title="Revenue Sources"
+        description="YTD revenue breakdown by category"
+        loading={loading}
+      />
 
       <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
