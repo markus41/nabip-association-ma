@@ -153,21 +153,47 @@ export function EnhancedChapterCard({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Members</p>
-            <p className="text-2xl font-semibold tabular-nums">{chapter.memberCount.toLocaleString()}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Events</p>
-            <p className="text-2xl font-semibold tabular-nums">{chapter.activeEventsCount}</p>
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick(chapter)
+            }}
+            className="text-left p-3 rounded-lg hover:bg-muted/50 transition-colors group/metric"
+          >
+            <p className="text-xs text-muted-foreground mb-1 group-hover/metric:text-primary transition-colors">
+              Members
+            </p>
+            <p className="text-2xl font-semibold tabular-nums group-hover/metric:text-primary transition-colors">
+              {chapter.memberCount.toLocaleString()}
+            </p>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick(chapter)
+            }}
+            className="text-left p-3 rounded-lg hover:bg-muted/50 transition-colors group/metric"
+          >
+            <p className="text-xs text-muted-foreground mb-1 group-hover/metric:text-primary transition-colors">
+              Events
+            </p>
+            <p className="text-2xl font-semibold tabular-nums group-hover/metric:text-primary transition-colors">
+              {chapter.activeEventsCount}
+            </p>
+          </button>
         </div>
 
         <div className="pt-3 border-t space-y-3">
-          <div className="flex items-center justify-between">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onClick(chapter)
+            }}
+            className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors group/trend"
+          >
             <div className="flex items-center gap-2">
-              <ChartLine size={14} weight="duotone" className="text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">3-Month Trend</span>
+              <ChartLine size={14} weight="duotone" className="text-muted-foreground group-hover/trend:text-primary transition-colors" />
+              <span className="text-xs text-muted-foreground group-hover/trend:text-primary transition-colors">3-Month Trend</span>
             </div>
             <svg width="80" height="24" className="flex-shrink-0">
               <polyline
@@ -188,7 +214,7 @@ export function EnhancedChapterCard({
                 }
               />
             </svg>
-          </div>
+          </button>
 
           {performance.memberPerformance !== 0 && (
             <div className={`flex items-center gap-1.5 text-xs ${

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useLocalStorage } from '@/lib/useLocalStorage'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,10 +37,10 @@ import {
   MagnifyingGlass,
   Clock,
   ChartLine,
-  ChartPie,
-  Eye
+  Eye,
+  Warning
 } from '@phosphor-icons/react'
-import type { Report } from '@/lib/types'
+import type { Report, Member, Event, Transaction, Chapter, ReportColumn } from '@/lib/types'
 import { formatDate } from '@/lib/data-utils'
 import { toast } from 'sonner'
 import { ReportBuilder } from './ReportBuilder'
@@ -50,20 +51,60 @@ import {
   CustomPieChart,
 } from './ChartComponents'
 
-interface ReportsViewProps {
-  reports: Report[]
-  loading?: boolean
+interface ReportExecution {
+  reportId: string
+  executedAt: string
+  data: any[]
+  rowCount: number
 }
 
-export function ReportsView({ reports, loading }: ReportsViewProps) {
+interface ReportsViewProps {
+  reports: Report[]
+  onUpdateReports?: (reports: Report[]) => void
+  loading?: boolean
+  members?: Member[]
+  events?: Event[]
+  transactions?: Transaction[]
+  chapters?: Chapter[]
+}
+
+export function ReportsView({
+  reports,
+  onUpdateReports,
+  loading,
+  members = [],
+  events = [],
+  transactions = [],
+  chapters = []
+}: ReportsViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [builderOpen, setBuilderOpen] = useState(false)
-  const [localReports, setLocalReports] = useState(reports)
+  const [isRunning, setIsRunning] = useState(false)
+  const [executionError, setExecutionError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'details' | 'preview'>('details')
+
+  // Persistent report execution cache using localStorage
+  const [reportExecutions, setReportExecutions] = useLocalStorage<Record<string, ReportExecution>>('ams-report-executions', {})
+
+  // Get cached data for selected report
+  const reportData = selectedReport && reportExecutions[selectedReport.id]
+    ? reportExecutions[selectedReport.id].data
+    : []
+
+  // Sync selected report with latest data from reports array
+  useEffect(() => {
+    if (selectedReport) {
+      const updatedReport = reports.find(r => r.id === selectedReport.id)
+      if (updatedReport) {
+        setSelectedReport(updatedReport)
+      }
+    }
+  }, [reports, selectedReport?.id])
 
   const filteredReports = useMemo(() => {
-    return localReports.filter(report => {
+    return reports.filter(report => {
       const matchesSearch =
         report.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         report.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -72,22 +113,385 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
 
       return matchesSearch && matchesCategory
     }).sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime())
-  }, [localReports, searchQuery, categoryFilter])
+  }, [reports, searchQuery, categoryFilter])
 
   const handleSaveReport = (report: Report) => {
-    setLocalReports([...localReports, report])
+    if (!onUpdateReports) {
+      toast.error('Unable to save report', {
+        description: 'Report update handler not configured'
+      })
+      return
+    }
+
+    try {
+      const updatedReports = [...reports, report]
+      onUpdateReports(updatedReports)
+      toast.success('Report created successfully', {
+        description: `${report.name} has been added to your reports`
+      })
+    } catch (error) {
+      toast.error('Failed to create report', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    }
   }
 
-  const handleRunReport = (report: Report) => {
-    toast.success(`Running report: ${report.name}`, {
-      description: 'Your report will be ready in a moment.'
+  /**
+   * Execute report query against real application data
+   * Establishes data retrieval from members, events, transactions, and chapters
+   * to drive measurable insights and support sustainable reporting practices
+   */
+  const executeReportQuery = (report: Report): any[] => {
+    if (!report.columns || report.columns.length === 0) {
+      throw new Error('Report has no columns configured')
+    }
+
+    try {
+      const data: any[] = []
+
+      // Determine data source based on column fields
+      const hasMemberFields = report.columns.some(col => col.field.startsWith('member.'))
+      const hasChapterFields = report.columns.some(col => col.field.startsWith('chapter.'))
+      const hasEventFields = report.columns.some(col => col.field.startsWith('event.'))
+      const hasTransactionFields = report.columns.some(col => col.field.startsWith('transaction.'))
+
+      // Primary data source selection
+      let primarySource: any[] = []
+      if (hasMemberFields) {
+        primarySource = members
+      } else if (hasEventFields) {
+        primarySource = events
+      } else if (hasTransactionFields) {
+        primarySource = transactions
+      } else if (hasChapterFields) {
+        primarySource = chapters
+      }
+
+      if (primarySource.length === 0) {
+        throw new Error('No data available for this report configuration')
+      }
+
+      // Build result set from primary source
+      primarySource.forEach((item, index) => {
+        const row: any = { id: index + 1 }
+
+        report.columns?.forEach(column => {
+          const [entityType, fieldName] = column.field.split('.')
+
+          if (entityType === 'member' && 'firstName' in item) {
+            const member = item as Member
+            switch (fieldName) {
+              case 'firstName':
+                row[column.field] = member.firstName
+                break
+              case 'lastName':
+                row[column.field] = member.lastName
+                break
+              case 'email':
+                row[column.field] = member.email
+                break
+              case 'memberType':
+                row[column.field] = member.memberType
+                break
+              case 'status':
+                row[column.field] = member.status
+                break
+              case 'joinedDate':
+                row[column.field] = formatDate(member.joinedDate)
+                break
+              case 'expiryDate':
+                row[column.field] = formatDate(member.expiryDate)
+                break
+              case 'engagementScore':
+                row[column.field] = member.engagementScore
+                break
+              default:
+                row[column.field] = '-'
+            }
+          } else if (entityType === 'chapter' && 'type' in item && item.type !== undefined) {
+            const chapter = item as Chapter
+            switch (fieldName) {
+              case 'name':
+                row[column.field] = chapter.name
+                break
+              case 'type':
+                row[column.field] = chapter.type
+                break
+              case 'region':
+                row[column.field] = chapter.region || chapter.state || '-'
+                break
+              default:
+                row[column.field] = '-'
+            }
+          } else if (entityType === 'event' && 'capacity' in item) {
+            const event = item as Event
+            switch (fieldName) {
+              case 'name':
+                row[column.field] = event.name
+                break
+              case 'startDate':
+                row[column.field] = formatDate(event.startDate)
+                break
+              case 'registeredCount':
+                row[column.field] = event.registeredCount
+                break
+              default:
+                row[column.field] = '-'
+            }
+          } else if (entityType === 'transaction' && 'amount' in item) {
+            const transaction = item as Transaction
+            switch (fieldName) {
+              case 'amount':
+                row[column.field] = transaction.amount
+                break
+              case 'type':
+                row[column.field] = transaction.type
+                break
+              case 'date':
+                row[column.field] = formatDate(transaction.date)
+                break
+              default:
+                row[column.field] = '-'
+            }
+          }
+        })
+
+        data.push(row)
+      })
+
+      // Apply aggregations if specified
+      const aggregatedData = applyAggregations(data, report.columns)
+
+      return aggregatedData
+    } catch (error) {
+      throw new Error(`Failed to execute report query: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  /**
+   * Apply aggregation functions to report data
+   * Streamlines data analysis by computing sum, average, count, min, max
+   */
+  const applyAggregations = (data: any[], columns: ReportColumn[]): any[] => {
+    const aggregateColumns = columns.filter(col => col.aggregate)
+
+    if (aggregateColumns.length === 0) {
+      return data
+    }
+
+    // Group data if aggregations are present
+    const result: any = { id: 1 }
+
+    columns.forEach(column => {
+      if (column.aggregate && column.type === 'number') {
+        const values = data.map(row => row[column.field]).filter(v => typeof v === 'number')
+
+        switch (column.aggregate) {
+          case 'sum':
+            result[column.field] = values.reduce((acc, val) => acc + val, 0)
+            break
+          case 'avg':
+            result[column.field] = values.length > 0 ? values.reduce((acc, val) => acc + val, 0) / values.length : 0
+            break
+          case 'count':
+            result[column.field] = values.length
+            break
+          case 'min':
+            result[column.field] = values.length > 0 ? Math.min(...values) : 0
+            break
+          case 'max':
+            result[column.field] = values.length > 0 ? Math.max(...values) : 0
+            break
+        }
+      } else if (!column.aggregate && data.length > 0) {
+        // For non-aggregate columns, take first value or count
+        result[column.field] = data[0][column.field] || `${data.length} rows`
+      }
     })
+
+    return aggregateColumns.length > 0 && aggregateColumns.length === columns.filter(c => c.type === 'number').length
+      ? [result]
+      : data
   }
 
+  /**
+   * Execute report and cache results
+   * Establishes persistent report execution tracking to minimize recomputation
+   * and streamline report access with sustained performance
+   */
+  const handleRunReport = async (report: Report) => {
+    if (!report.columns || report.columns.length === 0) {
+      toast.error('Cannot run report', {
+        description: 'This report has no columns configured'
+      })
+      return
+    }
+
+    setIsRunning(true)
+    setExecutionError(null)
+
+    toast.info(`Running report: ${report.name}`, {
+      description: 'Executing query against application data...'
+    })
+
+    try {
+      // Execute query against real data
+      const data = executeReportQuery(report)
+
+      // Cache execution results with useKV for persistence
+      const execution: ReportExecution = {
+        reportId: report.id,
+        executedAt: new Date().toISOString(),
+        data,
+        rowCount: data.length
+      }
+
+      setReportExecutions({
+        ...reportExecutions,
+        [report.id]: execution
+      })
+
+      // Update the report's last run date
+      if (onUpdateReports) {
+        const updatedReports = reports.map(r =>
+          r.id === report.id
+            ? { ...r, lastRunDate: execution.executedAt }
+            : r
+        )
+        onUpdateReports(updatedReports)
+      }
+
+      // Switch to preview tab to show results
+      setActiveTab('preview')
+
+      toast.success(`Report completed: ${report.name}`, {
+        description: `Generated ${data.length} rows of data. Results cached for quick access.`
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      setExecutionError(errorMessage)
+
+      toast.error('Failed to run report', {
+        description: errorMessage
+      })
+    } finally {
+      setIsRunning(false)
+    }
+  }
+
+  /**
+   * Export report data to various formats
+   * Streamlines data extraction and external analysis capabilities
+   * Supports CSV, Excel-compatible format, and structured data export
+   */
   const handleExportReport = (report: Report, format: string) => {
-    toast.success(`Exporting to ${format.toUpperCase()}`, {
-      description: 'Your download will start shortly.'
+    if (reportData.length === 0) {
+      toast.error('No data to export', {
+        description: 'Please run the report first to generate data'
+      })
+      return
+    }
+
+    try {
+      if (format === 'csv' || format === 'excel') {
+        exportToCSV(report, reportData)
+      } else if (format === 'pdf') {
+        exportToPDF(report, reportData)
+      }
+
+      toast.success(`Export complete: ${format.toUpperCase()}`, {
+        description: `${reportData.length} rows exported successfully.`
+      })
+    } catch (error) {
+      toast.error('Export failed', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    }
+  }
+
+  /**
+   * Generate and download CSV file from report data
+   * Establishes downloadable data format for external processing
+   */
+  const exportToCSV = (report: Report, data: any[]) => {
+    if (!report.columns || report.columns.length === 0) {
+      throw new Error('No columns defined for export')
+    }
+
+    // Build CSV header
+    const headers = ['ID', ...report.columns.map(col => col.label)]
+    const csvRows = [headers.join(',')]
+
+    // Build CSV data rows
+    data.forEach(row => {
+      const values = [
+        row.id,
+        ...report.columns!.map(col => {
+          const value = row[col.field]
+          // Escape commas and quotes in CSV
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`
+          }
+          return value ?? ''
+        })
+      ]
+      csvRows.push(values.join(','))
     })
+
+    // Create and download file
+    const csvContent = csvRows.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${report.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+  }
+
+  /**
+   * Generate and download PDF-style structured data
+   * Establishes printable report format for documentation and sharing
+   */
+  const exportToPDF = (report: Report, data: any[]) => {
+    // For now, export as formatted text that can be saved as PDF
+    // In production, this would use a PDF generation library like jsPDF
+    const lines = [
+      `NABIP Association Management System`,
+      `Report: ${report.name}`,
+      `Category: ${report.category}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Total Rows: ${data.length}`,
+      '',
+      '='.repeat(80),
+      ''
+    ]
+
+    if (report.columns) {
+      // Add column headers
+      const headers = ['ID', ...report.columns.map(col => col.label)]
+      lines.push(headers.join(' | '))
+      lines.push('-'.repeat(80))
+
+      // Add data rows (limited to first 100 for PDF)
+      data.slice(0, 100).forEach(row => {
+        const values = [
+          String(row.id).padEnd(8),
+          ...report.columns!.map(col => String(row[col.field] ?? '-').padEnd(15))
+        ]
+        lines.push(values.join(' | '))
+      })
+
+      if (data.length > 100) {
+        lines.push('')
+        lines.push(`... and ${data.length - 100} more rows`)
+      }
+    }
+
+    const content = lines.join('\n')
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${report.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.txt`
+    link.click()
   }
 
   const categories = ['membership', 'financial', 'events', 'engagement', 'custom']
@@ -161,7 +565,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 Total Reports
               </p>
               <p className="text-2xl font-semibold tabular-nums">
-                {loading ? '...' : localReports.length}
+                {loading ? '...' : reports.length}
               </p>
             </div>
           </div>
@@ -177,7 +581,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 Scheduled
               </p>
               <p className="text-2xl font-semibold tabular-nums">
-                {loading ? '...' : localReports.filter(r => r.schedule).length}
+                {loading ? '...' : reports.filter(r => r.schedule).length}
               </p>
             </div>
           </div>
@@ -193,7 +597,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 Run Today
               </p>
               <p className="text-2xl font-semibold tabular-nums">
-                {loading ? '...' : localReports.filter(r => {
+                {loading ? '...' : reports.filter(r => {
                   if (!r.lastRunDate) return false
                   const lastRun = new Date(r.lastRunDate)
                   const today = new Date()
@@ -214,7 +618,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 Public Reports
               </p>
               <p className="text-2xl font-semibold tabular-nums">
-                {loading ? '...' : localReports.filter(r => r.isPublic).length}
+                {loading ? '...' : reports.filter(r => r.isPublic).length}
               </p>
             </div>
           </div>
@@ -365,7 +769,11 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                     <TableRow
                       key={report.id}
                       className="cursor-pointer"
-                      onClick={() => setSelectedReport(report)}
+                      onClick={() => {
+                        setSelectedReport(report)
+                        setActiveTab(reportExecutions[report.id] ? 'preview' : 'details')
+                        setExecutionError(null)
+                      }}
                     >
                       <TableCell>
                         <div>
@@ -412,6 +820,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                             e.stopPropagation()
                             handleRunReport(report)
                           }}
+                          disabled={isRunning}
                         >
                           <Play size={16} />
                         </Button>
@@ -425,14 +834,21 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
+      <Dialog open={!!selectedReport} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedReport(null)
+          setActiveTab('details')
+          setExecutionError(null)
+          // Note: reportData is now cached in useKV, so we don't clear it
+        }
+      }}>
         <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedReport?.name}</DialogTitle>
             <DialogDescription>Report details and configuration</DialogDescription>
           </DialogHeader>
           {selectedReport && (
-            <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'details' | 'preview')} className="flex-1 flex flex-col overflow-hidden">
               <TabsList className="shrink-0">
                 <TabsTrigger value="details" className="gap-2">
                   <FileText size={16} />
@@ -440,7 +856,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 </TabsTrigger>
                 <TabsTrigger value="preview" className="gap-2">
                   <Eye size={16} />
-                  Web View
+                  Preview
                 </TabsTrigger>
               </TabsList>
 
@@ -534,6 +950,18 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
 
               <TabsContent value="preview" className="flex-1 overflow-y-auto pr-2 mt-4">
                 <div className="space-y-4">
+                  {executionError && (
+                    <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+                      <div className="flex items-start gap-3">
+                        <Warning size={20} className="text-destructive mt-0.5" weight="fill" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-destructive mb-1">Execution Error</h4>
+                          <p className="text-sm text-muted-foreground">{executionError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="rounded-lg border bg-card p-6">
                     <div className="mb-6">
                       <h2 className="text-2xl font-semibold mb-2">{selectedReport.name}</h2>
@@ -550,49 +978,81 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                       </div>
                     </div>
 
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>ID</TableHead>
-                          {selectedReport.columns?.slice(0, 5).map((col, idx) => (
-                            <TableHead key={idx}>{col.label}</TableHead>
-                          ))}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Array.from({ length: 10 }).map((_, rowIdx) => (
-                          <TableRow key={rowIdx}>
-                            <TableCell className="font-medium">#{rowIdx + 1}</TableCell>
-                            {selectedReport.columns?.slice(0, 5).map((col, colIdx) => (
-                              <TableCell key={colIdx}>
-                                {col.type === 'number'
-                                  ? Math.floor(Math.random() * 1000)
-                                  : col.type === 'date'
-                                  ? new Date(Date.now() - Math.random() * 10000000000).toLocaleDateString()
-                                  : `Sample ${col.label}`}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-
-                    <div className="mt-4 text-sm text-muted-foreground">
-                      Showing 10 sample rows. Run report to see actual data.
-                    </div>
+                    {reportData.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">
+                            Showing {reportData.length} rows
+                          </p>
+                          <Badge variant="outline" className="bg-teal/10 text-teal border-teal/20">
+                            Last run: {selectedReport.lastRunDate ? formatDate(selectedReport.lastRunDate) : 'Just now'}
+                          </Badge>
+                        </div>
+                        <div className="max-h-[400px] overflow-auto rounded-lg border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="sticky top-0 bg-background">ID</TableHead>
+                                {selectedReport.columns?.map((col, idx) => (
+                                  <TableHead key={idx} className="sticky top-0 bg-background">{col.label}</TableHead>
+                                ))}
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {reportData.slice(0, 50).map((row, rowIdx) => (
+                                <TableRow key={rowIdx}>
+                                  <TableCell className="font-medium">#{row.id}</TableCell>
+                                  {selectedReport.columns?.map((col, colIdx) => (
+                                    <TableCell key={colIdx}>
+                                      {col.type === 'number' && typeof row[col.field] === 'number'
+                                        ? row[col.field].toLocaleString()
+                                        : row[col.field] ?? '-'}
+                                    </TableCell>
+                                  ))}
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <ChartBar size={48} className="mx-auto text-muted-foreground mb-4 opacity-50" />
+                        <p className="text-muted-foreground text-lg font-medium mb-2">
+                          No data generated yet
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Click "Run Report" below to generate the report with actual data
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </TabsContent>
 
               <div className="flex flex-wrap gap-2 pt-4 border-t shrink-0 mt-4">
-                <Button className="flex-1 min-w-[140px]" onClick={() => handleRunReport(selectedReport)}>
-                  <Play size={18} weight="bold" />
-                  <span className="ml-2">Run Report</span>
+                <Button
+                  className="flex-1 min-w-[140px]"
+                  onClick={() => handleRunReport(selectedReport)}
+                  disabled={isRunning}
+                >
+                  {isRunning ? (
+                    <>
+                      <div className="animate-spin mr-2 h-4 w-4 border-2 border-background border-t-transparent rounded-full" />
+                      <span className="ml-2">Running...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play size={18} weight="bold" />
+                      <span className="ml-2">Run Report</span>
+                    </>
+                  )}
                 </Button>
                 <Button
                   variant="outline"
                   className="flex-1 min-w-[100px]"
                   onClick={() => handleExportReport(selectedReport, 'csv')}
+                  disabled={isRunning || reportData.length === 0}
                 >
                   <Download size={18} />
                   <span className="ml-2">CSV</span>
@@ -601,6 +1061,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                   variant="outline"
                   className="flex-1 min-w-[100px]"
                   onClick={() => handleExportReport(selectedReport, 'excel')}
+                  disabled={isRunning || reportData.length === 0}
                 >
                   <Download size={18} />
                   <span className="ml-2">Excel</span>
@@ -609,6 +1070,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                   variant="outline"
                   className="flex-1 min-w-[100px]"
                   onClick={() => handleExportReport(selectedReport, 'pdf')}
+                  disabled={isRunning || reportData.length === 0}
                 >
                   <Download size={18} />
                   <span className="ml-2">PDF</span>
@@ -627,3 +1089,5 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
     </div>
   )
 }
+
+export default ReportsView

@@ -1,0 +1,258 @@
+name: Auto-Enrich Issues
+
+# Establish automated information gathering to streamline issue triage
+# and improve visibility across your development environment
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  enrich-issue:
+    name: Automatically Enrich Issue Information
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Gather contextual information and enrich issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const issueBody = issue.body || '';
+            const issueTitle = issue.title.toLowerCase();
+            const issueText = (issueTitle + ' ' + issueBody).toLowerCase();
+
+            let enrichments = [];
+
+            // ================================================================
+            // ENVIRONMENT DETECTION
+            // ================================================================
+
+            // Detect user agent information (browser, OS)
+            if (issueBody && !issueBody.includes('**Environment**')) {
+              enrichments.push(`## 📊 Detected Environment\n\n_Auto-detected from context_\n- **Issue Created**: ${new Date(issue.created_at).toLocaleString()}\n- **Reporter**: @${issue.user.login}\n`);
+            }
+
+            // ================================================================
+            // FIND RELATED ISSUES & PULL REQUESTS
+            // ================================================================
+
+            console.log('🔍 Searching for related issues and PRs...');
+
+            // Extract key terms from title for search
+            const searchTerms = issueTitle
+              .replace(/\b(fix|bug|feature|add|implement|update|refactor)\b/g, '')
+              .trim()
+              .split(/\s+/)
+              .filter(term => term.length > 3)
+              .slice(0, 3)
+              .join(' ');
+
+            let relatedItems = [];
+
+            if (searchTerms) {
+              try {
+                // Search for related issues
+                const { data: relatedIssues } = await github.rest.search.issuesAndPullRequests({
+                  q: `repo:${context.repo.owner}/${context.repo.repo} ${searchTerms} is:issue`,
+                  sort: 'relevance',
+                  per_page: 5
+                });
+
+                const filteredIssues = relatedIssues.items
+                  .filter(item => item.number !== issue.number)
+                  .slice(0, 3);
+
+                if (filteredIssues.length > 0) {
+                  relatedItems.push('**Related Issues:**');
+                  filteredIssues.forEach(item => {
+                    relatedItems.push(`- #${item.number} - ${item.title} ${item.state === 'closed' ? '✅' : '🔄'}`);
+                  });
+                }
+
+                // Search for related PRs
+                const { data: relatedPRs } = await github.rest.search.issuesAndPullRequests({
+                  q: `repo:${context.repo.owner}/${context.repo.repo} ${searchTerms} is:pr`,
+                  sort: 'relevance',
+                  per_page: 3
+                });
+
+                if (relatedPRs.items.length > 0) {
+                  relatedItems.push('\n**Related Pull Requests:**');
+                  relatedPRs.items.slice(0, 3).forEach(item => {
+                    relatedItems.push(`- #${item.number} - ${item.title} ${item.state === 'closed' ? '✅' : '🔄'}`);
+                  });
+                }
+
+                if (relatedItems.length > 0) {
+                  enrichments.push(`\n## 🔗 Related Items\n\n${relatedItems.join('\n')}\n`);
+                }
+              } catch (error) {
+                console.log('⚠️ Error searching for related items:', error.message);
+              }
+            }
+
+            // ================================================================
+            // CODE REFERENCES - Link to relevant files
+            // ================================================================
+
+            console.log('🗂️ Identifying relevant code references...');
+
+            const codeReferences = [];
+
+            // Map keywords to file paths
+            const fileMapping = {
+              'auth': ['src/lib/auth.ts', 'src/components/auth/', 'src/hooks/useAuth.ts'],
+              'member': ['src/features/members/', 'src/types/member.ts', 'src/lib/api/members.ts'],
+              'chapter': ['src/features/chapters/', 'src/types/chapter.ts'],
+              'event': ['src/features/events/', 'src/types/event.ts', 'src/components/events/'],
+              'campaign': ['src/features/campaigns/', 'src/types/campaign.ts'],
+              'learning': ['src/features/learning/', 'src/types/course.ts'],
+              'report': ['src/features/reports/', 'src/components/reports/'],
+              'payment': ['src/lib/stripe.ts', 'src/features/financial/', 'src/types/payment.ts'],
+              'database': ['supabase/migrations/', 'src/lib/supabase.ts'],
+              'ui': ['src/components/ui/', 'src/styles/'],
+              'api': ['src/lib/api/', 'src/actions/'],
+              'deployment': ['.github/workflows/', 'vercel.json'],
+              'security': ['src/lib/auth.ts', 'src/middleware/', 'supabase/migrations/'],
+            };
+
+            for (const [keyword, paths] of Object.entries(fileMapping)) {
+              if (issueText.includes(keyword)) {
+                paths.forEach(path => {
+                  if (!codeReferences.includes(path)) {
+                    codeReferences.push(path);
+                  }
+                });
+              }
+            }
+
+            if (codeReferences.length > 0) {
+              const fileList = codeReferences.slice(0, 5).map(ref => `- \`${ref}\``).join('\n');
+              enrichments.push(`\n## 📂 Potentially Relevant Files\n\n${fileList}\n\n_Auto-detected based on issue content. May require validation._\n`);
+            }
+
+            // ================================================================
+            // REPRODUCTION STEPS TEMPLATE
+            // ================================================================
+
+            console.log('🧪 Generating reproduction template...');
+
+            // Only suggest reproduction steps for bugs
+            if (issueText.match(/\b(bug|error|broken|crash|fail|not working|issue|problem)\b/) &&
+                !issueBody.includes('**Steps to Reproduce**') &&
+                !issueBody.includes('**To Reproduce**')) {
+
+              enrichments.push(`\n## 🔄 Suggested Information to Add\n\n**Steps to Reproduce:**
+1. Navigate to...
+2. Click on...
+3. Observe the error
+
+**Expected Behavior:**
+Describe what should happen
+
+**Actual Behavior:**
+Describe what actually happens
+
+**Screenshots:**
+If applicable, add screenshots to help explain the problem
+
+**Additional Context:**
+Add any other context about the problem here
+`);
+            }
+
+            // ================================================================
+            // ASSIGNEE RECOMMENDATIONS
+            // ================================================================
+
+            console.log('👥 Recommending assignees based on expertise...');
+
+            const assigneeRecommendations = [];
+
+            // Area-based expertise mapping (based on CODEOWNERS or team knowledge)
+            const expertiseMap = {
+              'auth': 'Security & Authentication expertise recommended',
+              'database': 'Database architecture expertise recommended',
+              'ui': 'Frontend/UI expertise recommended',
+              'api': 'Backend/API expertise recommended',
+              'deployment': 'DevOps expertise recommended',
+              'performance': 'Performance optimization expertise recommended',
+              'security': 'Security expertise recommended',
+            };
+
+            for (const [area, recommendation] of Object.entries(expertiseMap)) {
+              if (issueText.includes(area)) {
+                assigneeRecommendations.push(`- ${recommendation}`);
+                break; // Only add one recommendation
+              }
+            }
+
+            if (assigneeRecommendations.length > 0) {
+              enrichments.push(`\n## 👤 Assignment Recommendations\n\n${assigneeRecommendations.join('\n')}\n`);
+            }
+
+            // ================================================================
+            // MILESTONE INFERENCE
+            // ================================================================
+
+            console.log('🎯 Inferring milestone...');
+
+            let suggestedMilestone = null;
+
+            // Get existing labels (auto-applied by issue-management.yml)
+            const labels = issue.labels.map(l => l.name);
+
+            // Milestone logic based on priority and type
+            if (labels.includes('priority:critical') || labels.includes('security')) {
+              suggestedMilestone = 'Next Release (Critical)';
+            } else if (labels.includes('priority:high')) {
+              suggestedMilestone = 'Next Release';
+            } else if (labels.includes('type:feature') && !labels.includes('priority:low')) {
+              suggestedMilestone = 'Future Enhancements';
+            } else if (labels.includes('good-first-issue')) {
+              suggestedMilestone = 'Community Contributions';
+            }
+
+            if (suggestedMilestone) {
+              enrichments.push(`\n## 🎯 Suggested Milestone\n\n**Recommended**: ${suggestedMilestone}\n\n_Based on issue priority and type. Please validate and assign appropriate milestone._\n`);
+            }
+
+            // ================================================================
+            // UPDATE ISSUE BODY
+            // ================================================================
+
+            if (enrichments.length > 0) {
+              console.log(`✅ Adding ${enrichments.length} enrichments to issue #${issue.number}`);
+
+              const enrichmentSection = `\n\n---\n\n# 🤖 Auto-Generated Enrichments\n\n${enrichments.join('\n')}---\n\n_Automated issue enrichment establishing structured triage workflows across your development environment_`;
+
+              const updatedBody = issueBody + enrichmentSection;
+
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: updatedBody
+              });
+
+              console.log(`✅ Successfully enriched issue #${issue.number} with contextual information`);
+
+              // Add a comment to notify about enrichments
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `## ✨ Issue Auto-Enrichment Complete\n\nI've analyzed this issue and added contextual information to streamline triage and resolution:\n\n${enrichments.length > 0 ? '**Enrichments Added:**\n' + enrichments.map((e, i) => `${i + 1}. ${e.split('\n')[0].replace(/^##\s*/, '').replace(/🔗|📂|🔄|👤|🎯|📊/g, '').trim()}`).join('\n') : ''}\n\n**Next Steps:**\n1. Review auto-detected information for accuracy\n2. Add any missing details from the suggested templates\n3. Assign to appropriate team member based on expertise recommendations\n4. Set milestone if suggested milestone is appropriate\n\n---\n_Automated enrichments establishing reliable issue management workflows across your environment_`
+              });
+            } else {
+              console.log('ℹ️ No enrichments needed for this issue');
+            }

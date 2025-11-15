@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalStorage } from '@/lib/useLocalStorage'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ interface EditableChapter extends Chapter {
 }
 
 export function ChaptersGrid({ chapters: initialChapters, loading }: ChaptersGridProps) {
-  const [chapters, setChapters] = useKV<Chapter[]>('ams-chapters', initialChapters)
+  const [chapters, setChapters] = useLocalStorage<Chapter[]>('ams-chapters', initialChapters)
   const [editableChapters, setEditableChapters] = useState<EditableChapter[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(['chapter-national']))

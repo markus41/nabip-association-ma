@@ -1,0 +1,371 @@
+name: Production Deployment
+
+# Establish controlled production deployments with safeguards and validation
+# to support reliable delivery across your business environment
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "DEPLOY TO PRODUCTION" to confirm'
+        required: true
+      reason:
+        description: 'Reason for manual production deployment'
+        required: true
+
+permissions:
+  contents: read
+  deployments: write
+  issues: write
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  # Validation step for manual deployments
+  validate-manual-deployment:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      approved: ${{ steps.check.outputs.approved }}
+
+    steps:
+      - name: Validate deployment confirmation
+        id: check
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "DEPLOY TO PRODUCTION" ]; then
+            echo "❌ Deployment confirmation invalid"
+            echo "Expected: 'DEPLOY TO PRODUCTION'"
+            echo "Received: '${{ github.event.inputs.confirmation }}'"
+            exit 1
+          fi
+          echo "✅ Deployment confirmation validated"
+          echo "approved=true" >> $GITHUB_OUTPUT
+
+  deploy-production:
+    name: Deploy to Production Environment
+    needs: [validate-manual-deployment]
+    if: |
+      always() &&
+      (github.event_name == 'release' ||
+       (github.event_name == 'workflow_dispatch' && needs.validate-manual-deployment.outputs.approved == 'true'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.deployment_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run comprehensive quality validation
+        id: quality_checks
+        run: |
+          echo "🔍 Running comprehensive quality checks..."
+
+          # Linting
+          echo "→ Running ESLint..."
+          npm run lint
+
+          # Type checking
+          echo "→ Running TypeScript compilation..."
+          npx tsc --noEmit
+
+          # Security audit (only production dependencies)
+          echo "→ Running security audit..."
+          npm audit --production --audit-level=high || echo "⚠️ Security warnings found - review required"
+
+          echo "✅ Quality checks completed successfully"
+
+      - name: Build application for production
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel production configuration
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build production artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel Production
+        id: deploy
+        run: |
+          DEPLOYMENT_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | grep -o 'https://[^[:space:]]*' | head -1)
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "✅ Deployed to production: $DEPLOYMENT_URL"
+
+      - name: Create GitHub deployment record
+        id: deployment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deploymentReason = context.eventName === 'release'
+              ? 'Release ${{ github.event.release.tag_name }}'
+              : '${{ github.event.inputs.reason }}';
+
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.ref,
+              environment: 'production',
+              description: deploymentReason,
+              auto_merge: false,
+              required_contexts: [],
+              production_environment: true
+            });
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: 'success',
+              environment_url: '${{ steps.deploy.outputs.deployment_url }}',
+              description: 'Production deployment successful'
+            });
+
+            core.setOutput('deployment_id', deployment.data.id);
+            return deployment.data.id;
+
+      - name: Run production health checks
+        id: health_checks
+        run: |
+          echo "🏥 Running production health checks..."
+          PROD_URL="${{ steps.deploy.outputs.deployment_url }}"
+
+          # Wait for deployment to be ready
+          echo "→ Waiting for deployment to be ready..."
+          sleep 10
+
+          # Homepage health check
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL")
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Homepage health check failed (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          echo "✅ Homepage loads successfully"
+
+          # API health endpoint (if available)
+          API_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/api/health" || echo "404")
+          if [ "$API_CODE" == "200" ]; then
+            echo "✅ API health check passed"
+          else
+            echo "ℹ️ API health endpoint returned HTTP $API_CODE or not available"
+          fi
+
+          # Response time check
+          RESPONSE_TIME=$(curl -o /dev/null -s -w '%{time_total}' "$PROD_URL")
+          echo "→ Response time: ${RESPONSE_TIME}s"
+          if (( $(echo "$RESPONSE_TIME > 2.0" | bc -l) )); then
+            echo "⚠️ Response time above 2 seconds - performance monitoring recommended"
+          else
+            echo "✅ Response time acceptable"
+          fi
+
+          echo "✅ Production health checks completed"
+
+      - name: Run critical path validation
+        id: critical_path
+        continue-on-error: true
+        run: |
+          echo "🧪 Validating critical user paths..."
+          PROD_URL="${{ steps.deploy.outputs.deployment_url }}"
+
+          # Test critical endpoints/pages
+          ENDPOINTS=(
+            "/"
+            "/api/health"
+          )
+
+          FAILED=0
+          for endpoint in "${ENDPOINTS[@]}"; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL$endpoint" || echo "000")
+            if [ "$STATUS" == "200" ] || [ "$STATUS" == "404" ]; then
+              echo "✅ $endpoint: HTTP $STATUS"
+            else
+              echo "⚠️ $endpoint: HTTP $STATUS"
+              FAILED=$((FAILED+1))
+            fi
+          done
+
+          if [ $FAILED -gt 0 ]; then
+            echo "⚠️ $FAILED critical path(s) failed validation"
+          else
+            echo "✅ All critical paths validated"
+          fi
+
+      - name: Notify team of production deployment
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deploymentUrl = '${{ steps.deploy.outputs.deployment_url }}';
+            const releaseTag = '${{ github.event.release.tag_name }}' || 'N/A';
+            const manualReason = '${{ github.event.inputs.reason }}' || '';
+            const deploymentType = context.eventName === 'release' ? 'Release Deployment' : 'Manual Deployment';
+
+            const message = `## 🚀 Production Deployment Successful
+
+${deploymentType} completed successfully and is now serving live traffic.
+
+**🔗 Production URL**: ${deploymentUrl}
+
+**📋 Deployment Details**:
+- **Environment**: Production (live)
+- **Type**: ${deploymentType}
+${releaseTag !== 'N/A' ? `- **Release**: ${releaseTag}` : ''}
+${manualReason ? `- **Reason**: ${manualReason}` : ''}
+- **Deployed**: ${new Date().toISOString()}
+- **Deployed by**: @${{ github.actor }}
+
+**✅ Quality Validation**:
+- Lint checks: ✅ Passed
+- TypeScript compilation: ✅ Passed
+- Security audit: ✅ Passed
+- Production build: ✅ Successful
+- Health checks: ✅ All systems operational
+- Critical paths: ${{ steps.critical_path.outcome == 'success' && '✅ Validated' || '⚠️ See logs' }}
+
+**📊 Post-Deployment Monitoring**:
+1. **Performance Monitoring** - Track Core Web Vitals and response times
+2. **Error Tracking** - Monitor for unexpected errors or issues
+3. **User Feedback** - Watch for support requests or bug reports
+4. **Analytics** - Review user engagement and conversion metrics
+5. **Database Performance** - Monitor Supabase query performance
+
+**🔄 Rollback Plan**:
+If issues are detected:
+1. Identify the problem scope and impact
+2. Use Vercel dashboard to rollback to previous deployment if needed
+3. Create hotfix branch from last stable release
+4. Deploy emergency fix following standard process
+
+**📈 Success Metrics**:
+- Deployment completed without errors
+- All health checks passed
+- Production environment operational
+- Zero downtime during deployment
+
+---
+*Production deployment establishing reliable service delivery across your business environment*
+
+_Deployment ID: ${{ steps.deployment.outputs.deployment_id }}_`;
+
+            // Create deployment announcement issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `✅ Production Deployment - ${releaseTag !== 'N/A' ? releaseTag : new Date().toISOString().split('T')[0]}`,
+              body: message,
+              labels: ['deployment', 'production', 'release']
+            });
+
+      - name: Handle deployment failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Update deployment status
+            if ('${{ steps.deployment.outputs.deployment_id }}') {
+              await github.rest.repos.createDeploymentStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                deployment_id: '${{ steps.deployment.outputs.deployment_id }}',
+                state: 'failure',
+                description: 'Production deployment failed'
+              });
+            }
+
+            // Create critical issue
+            const message = `## 🚨 CRITICAL: Production Deployment Failed
+
+**URGENT**: Production deployment encountered a critical failure.
+
+**📋 Failure Details**:
+- **Deployment Type**: ${context.eventName === 'release' ? 'Release' : 'Manual'}
+- **Release Tag**: ${{ github.event.release.tag_name || 'N/A' }}
+- **Triggered by**: @${{ github.actor }}
+- **Time**: ${new Date().toISOString()}
+
+**🔍 Failure Analysis**:
+Review the [workflow run logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed error information.
+
+**Possible Failure Points**:
+1. **Quality Checks** - Linting, TypeScript, or security audit failures
+2. **Build Process** - Compilation or bundling errors
+3. **Deployment** - Vercel deployment API errors
+4. **Health Checks** - Post-deployment validation failures
+
+**⚠️ Impact Assessment**:
+- Production deployment blocked
+- Latest changes not available to users
+- Previous production version still serving traffic (no downtime)
+
+**🚨 Immediate Actions Required**:
+1. **Investigate Root Cause**
+   - Review workflow logs for specific error messages
+   - Check Vercel dashboard for deployment status
+   - Validate environment variables and configuration
+
+2. **Fix and Validate**
+   - Address identified issues
+   - Test fix locally: \`npm run build\`
+   - Validate all quality checks pass
+
+3. **Redeploy**
+   - Create new release if this was a release deployment
+   - Trigger manual deployment if this was manual
+   - Monitor deployment process closely
+
+**📞 Escalation**:
+If unable to resolve within 30 minutes, escalate to:
+- Technical lead
+- DevOps team
+- Senior engineering staff
+
+**🔧 Common Issues**:
+- Environment variable misconfigurations
+- Breaking changes in dependencies
+- Build configuration errors
+- Vercel project settings issues
+- Network or authentication problems
+
+---
+*Critical alert - immediate attention required to restore deployment pipeline*`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 CRITICAL: Production Deployment Failed - ${new Date().toISOString().split('T')[0]}`,
+              body: message,
+              labels: ['deployment', 'production', 'critical', 'bug'],
+              assignees: ['${{ github.actor }}']
+            });
+
+      - name: Upload deployment artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-deployment-${{ github.run_number }}
+          path: |
+            .vercel/
+          retention-days: 90

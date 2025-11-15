@@ -618,3 +618,5 @@ export function EventsView({ events, members = [], onAddEvent, loading }: Events
     </div>
   )
 }
+
+export default EventsView

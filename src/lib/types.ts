@@ -369,3 +369,555 @@ export interface AuditLog {
   timestamp: string
   ipAddress?: string
 }
+
+// ============================================================================
+// ECOMMERCE TYPES
+// ============================================================================
+
+export type ProductCategory = 'membership' | 'course' | 'event_ticket' | 'merchandise' | 'publication'
+export type ProductStatus = 'draft' | 'published' | 'archived'
+export type PriceType = 'one_time' | 'recurring'
+export type BillingInterval = 'day' | 'week' | 'month' | 'year'
+export type CartStatus = 'active' | 'abandoned' | 'converted' | 'expired'
+export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled' | 'refunded' | 'partially_refunded'
+export type PaymentStatusType = 'unpaid' | 'authorized' | 'paid' | 'partially_refunded' | 'refunded' | 'failed'
+export type FulfillmentStatus = 'pending' | 'processing' | 'fulfilled' | 'cancelled'
+export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'cancelled' | 'unpaid' | 'incomplete' | 'incomplete_expired'
+export type DiscountType = 'percentage' | 'fixed_amount'
+export type RefundReason = 'requested_by_customer' | 'duplicate' | 'fraudulent' | 'other'
+export type WebhookProcessingStatus = 'pending' | 'processing' | 'processed' | 'failed' | 'skipped'
+
+export interface Product {
+  id: string
+  name: string
+  description?: string
+  category?: ProductCategory
+  tags?: string[]
+  stripeProductId?: string
+  active: boolean
+  featured?: boolean
+  trackInventory: boolean
+  inventoryQuantity: number
+  lowStockThreshold?: number
+  allowBackorder: boolean
+  isDigital: boolean
+  downloadUrl?: string
+  accessDurationDays?: number
+  imageUrl?: string
+  thumbnailUrl?: string
+  galleryUrls?: string[]
+  slug?: string
+  metaTitle?: string
+  metaDescription?: string
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  createdBy?: string
+}
+
+export interface Price {
+  id: string
+  productId: string
+  stripePriceId?: string
+  unitAmount: number
+  currency: string
+  type: PriceType
+  billingInterval?: BillingInterval
+  billingIntervalCount?: number
+  trialPeriodDays?: number
+  memberTier?: MembershipType
+  isMemberOnly: boolean
+  active: boolean
+  nickname?: string
+  description?: string
+  compareAtPrice?: number
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Cart {
+  id: string
+  memberId?: string
+  sessionId?: string
+  status: CartStatus
+  couponCode?: string
+  discountAmount: number
+  expiresAt: string
+  convertedToOrderId?: string
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  lastActivityAt: string
+  items?: CartItem[]
+}
+
+export interface CartItem {
+  id: string
+  cartId: string
+  productId: string
+  priceId: string
+  quantity: number
+  unitPrice: number
+  customOptions?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  product?: Product
+  price?: Price
+}
+
+export interface Order {
+  id: string
+  orderNumber: string
+  memberId?: string
+  email: string
+  subtotal: number
+  discountAmount: number
+  taxAmount: number
+  shippingAmount: number
+  totalAmount: number
+  currency: string
+  status: OrderStatus
+  paymentStatus: PaymentStatusType
+  paymentMethod?: string
+  stripePaymentIntentId?: string
+  stripeCheckoutSessionId?: string
+  shippingAddress?: Address
+  billingAddress?: Address
+  shippingMethod?: string
+  trackingNumber?: string
+  shippedAt?: string
+  deliveredAt?: string
+  couponCode?: string
+  confirmationSentAt?: string
+  fulfillmentEmailSentAt?: string
+  refundedAmount: number
+  refundedAt?: string
+  refundReason?: string
+  customerNotes?: string
+  internalNotes?: string
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  completedAt?: string
+  cancelledAt?: string
+  items?: OrderItem[]
+  payments?: Payment[]
+}
+
+export interface OrderItem {
+  id: string
+  orderId: string
+  productId?: string
+  priceId?: string
+  productName: string
+  productDescription?: string
+  sku?: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  discountAmount: number
+  taxAmount: number
+  customOptions?: Record<string, any>
+  isDigital: boolean
+  downloadUrl?: string
+  accessGrantedAt?: string
+  accessExpiresAt?: string
+  downloadCount: number
+  fulfillmentStatus: FulfillmentStatus
+  fulfilledAt?: string
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  product?: Product
+}
+
+export interface Payment {
+  id: string
+  orderId: string
+  amount: number
+  currency: string
+  status: PaymentStatusType
+  paymentMethod?: string
+  paymentMethodDetails?: Record<string, any>
+  stripePaymentIntentId?: string
+  stripeChargeId?: string
+  processorResponse?: Record<string, any>
+  failureReason?: string
+  failureCode?: string
+  refundedAmount: number
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  succeededAt?: string
+  failedAt?: string
+}
+
+export interface Refund {
+  id: string
+  paymentId: string
+  orderId: string
+  amount: number
+  currency: string
+  status: PaymentStatusType
+  reason?: RefundReason
+  reasonDescription?: string
+  stripeRefundId?: string
+  processorResponse?: Record<string, any>
+  failureReason?: string
+  processedBy?: string
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  succeededAt?: string
+  failedAt?: string
+}
+
+export interface Subscription {
+  id: string
+  memberId: string
+  productId: string
+  priceId: string
+  status: SubscriptionStatus
+  stripeSubscriptionId?: string
+  stripeCustomerId?: string
+  currentPeriodStart?: string
+  currentPeriodEnd?: string
+  trialStart?: string
+  trialEnd?: string
+  cancelAt?: string
+  cancelAtPeriodEnd: boolean
+  cancelledAt?: string
+  cancellationReason?: string
+  billingInterval: BillingInterval
+  billingIntervalCount: number
+  unitAmount: number
+  currency: string
+  latestInvoiceId?: string
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  startedAt: string
+  product?: Product
+  price?: Price
+}
+
+export interface Coupon {
+  id: string
+  code: string
+  name: string
+  description?: string
+  discountType: DiscountType
+  discountValue: number
+  currency?: string
+  maxRedemptions?: number
+  maxRedemptionsPerCustomer: number
+  redemptionCount: number
+  appliesTo: 'all' | 'products' | 'prices'
+  applicableProductIds?: string[]
+  applicablePriceIds?: string[]
+  minimumPurchaseAmount?: number
+  memberTier?: MembershipType
+  memberOnly: boolean
+  validFrom: string
+  validUntil?: string
+  stripeCouponId?: string
+  stripePromotionCodeId?: string
+  active: boolean
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  createdBy?: string
+}
+
+export interface CouponRedemption {
+  id: string
+  couponId: string
+  memberId?: string
+  orderId?: string
+  discountAmount: number
+  sessionId?: string
+  metadata?: Record<string, any>
+  createdAt: string
+  coupon?: Coupon
+}
+
+export interface WebhookEvent {
+  id: string
+  stripeEventId: string
+  eventType: string
+  eventData: Record<string, any>
+  processingStatus: WebhookProcessingStatus
+  errorMessage?: string
+  retryCount: number
+  relatedOrderId?: string
+  relatedSubscriptionId?: string
+  relatedInvoiceId?: string
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+  processedAt?: string
+}
+
+export interface StripeCustomer {
+  id: string
+  memberId: string
+  stripeCustomerId: string
+  defaultPaymentMethodId?: string
+  invoiceSettings?: Record<string, any>
+  metadata?: Record<string, any>
+  createdAt: string
+  updatedAt: string
+}
+
+// Enhanced shopping cart for UI
+export interface CartWithDetails extends Cart {
+  items: (CartItem & {
+    product: Product
+    price: Price
+  })[]
+  subtotal: number
+  total: number
+}
+
+// Checkout session data
+export interface CheckoutSession {
+  cartId: string
+  memberId?: string
+  email: string
+  shippingAddress?: Address
+  billingAddress?: Address
+  couponCode?: string
+  stripeSessionId?: string
+}
+
+// ============================================================================
+// ADVANCED ANALYTICS TYPES
+// ============================================================================
+
+export type AnalyticsEventType =
+  | 'page_view'
+  | 'button_click'
+  | 'form_submission'
+  | 'event_registration'
+  | 'event_check_in'
+  | 'email_open'
+  | 'email_click'
+  | 'course_enrollment'
+  | 'course_completion'
+  | 'login'
+  | 'logout'
+  | 'member_update'
+  | 'payment_completed'
+  | 'search'
+  | 'filter_applied'
+  | 'export_data'
+  | 'custom'
+
+export type PredictionType =
+  | 'churn_risk'
+  | 'engagement_forecast'
+  | 'event_attendance'
+  | 'renewal_likelihood'
+  | 'lifetime_value'
+  | 'next_action'
+
+export type CohortDefinitionType =
+  | 'join_date'
+  | 'chapter'
+  | 'membership_tier'
+  | 'engagement_level'
+  | 'activity_pattern'
+  | 'custom'
+
+export interface AnalyticsEvent {
+  id: string
+  eventType: AnalyticsEventType
+  memberId?: string
+  sessionId?: string
+  metadata: Record<string, any>
+  timestamp: string
+  page?: string
+  referrer?: string
+  userAgent?: string
+  ipAddress?: string
+}
+
+export interface MemberMetric {
+  id: string
+  memberId: string
+  engagementScore: number
+  activityCount: number
+  lastActivityDate: string
+  eventsAttended: number
+  emailsOpened: number
+  emailsClicked: number
+  coursesCompleted: number
+  loginCount: number
+  daysSinceLastLogin: number
+  churnRisk: number
+  lifetimeValue: number
+  lastCalculated: string
+  trends?: {
+    engagementTrend: 'increasing' | 'stable' | 'decreasing'
+    weeklyActiveRate: number
+    monthlyActiveRate: number
+  }
+}
+
+export interface CohortDefinition {
+  type: CohortDefinitionType
+  criteria: Record<string, any>
+  label: string
+  description?: string
+}
+
+export interface Cohort {
+  id: string
+  name: string
+  description?: string
+  definition: CohortDefinition
+  memberIds: string[]
+  memberCount: number
+  metrics?: CohortMetrics
+  createdDate: string
+  createdBy: string
+  lastUpdated: string
+}
+
+export interface CohortMetrics {
+  avgEngagementScore: number
+  retentionRate: number
+  churnRate: number
+  avgLifetimeValue: number
+  activeMembers: number
+  eventAttendanceRate: number
+  courseCompletionRate: number
+  emailEngagementRate: number
+}
+
+export interface RetentionAnalysis {
+  cohortId: string
+  cohortName: string
+  periods: RetentionPeriod[]
+  overallRetentionRate: number
+}
+
+export interface RetentionPeriod {
+  period: number
+  periodLabel: string
+  startingMembers: number
+  retainedMembers: number
+  retentionRate: number
+  churnedMembers: number
+}
+
+export interface Prediction {
+  id: string
+  memberId: string
+  predictionType: PredictionType
+  confidence: number
+  predictedValue: any
+  predictedDate?: string
+  factors?: PredictionFactor[]
+  recommendedActions?: string[]
+  createdAt: string
+  expiresAt?: string
+  modelVersion?: string
+}
+
+export interface PredictionFactor {
+  factor: string
+  weight: number
+  value: any
+  impact: 'positive' | 'negative' | 'neutral'
+}
+
+export interface ChurnPrediction extends Prediction {
+  predictionType: 'churn_risk'
+  predictedValue: number
+  riskLevel: 'low' | 'medium' | 'high' | 'critical'
+  predictedChurnDate?: string
+  preventionStrategies?: string[]
+}
+
+export interface MemberSimilarity {
+  memberId: string
+  similarMemberIds: string[]
+  similarityScores: Record<string, number>
+  basedOn: string[]
+  lastCalculated: string
+}
+
+export interface MemberEmbedding {
+  memberId: string
+  vector: number[]
+  metadata: {
+    interests?: string[]
+    activityLevel: string
+    membershipTier: MembershipType
+    chapterType: ChapterType
+    engagementSegment: string
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MemberJourney {
+  memberId: string
+  stages: JourneyStage[]
+  currentStage: string
+  daysInCurrentStage: number
+  predictedNextStage?: string
+  predictedTransitionDate?: string
+}
+
+export interface JourneyStage {
+  stage: string
+  enteredDate: string
+  exitedDate?: string
+  durationDays?: number
+  activities: string[]
+  milestones: string[]
+}
+
+export interface ConversionFunnel {
+  name: string
+  description?: string
+  stages: FunnelStage[]
+  conversionRate: number
+  dropoffRate: number
+  avgTimeToConvert: number
+}
+
+export interface FunnelStage {
+  name: string
+  order: number
+  memberCount: number
+  conversionRate: number
+  avgTimeToNextStage?: number
+  dropoffReasons?: string[]
+}
+
+export interface AnalyticsDashboardConfig {
+  widgets: AnalyticsWidget[]
+  dateRange: {
+    start: string
+    end: string
+  }
+  refreshInterval?: number
+}
+
+export interface AnalyticsWidget {
+  id: string
+  type: 'chart' | 'metric' | 'table' | 'heatmap' | 'journey' | 'funnel'
+  title: string
+  dataSource: string
+  config: Record<string, any>
+  position: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+}

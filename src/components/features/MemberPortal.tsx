@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalStorage } from '@/lib/useLocalStorage'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,13 +21,14 @@ import {
 import type { Member, Credential } from '@/lib/types'
 import { formatDate } from '@/lib/data-utils'
 import { toast } from 'sonner'
+import { MemberPortalLogin } from './MemberPortalLogin'
 
 interface MemberPortalProps {
   memberId: string
 }
 
 export function MemberPortal({ memberId }: MemberPortalProps) {
-  const [currentMember, setCurrentMember] = useKV<Member | null>('current-member', null)
+  const [currentMember, setCurrentMember] = useLocalStorage<Member | null>('current-member', null)
   const [isEditing, setIsEditing] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -76,15 +77,19 @@ export function MemberPortal({ memberId }: MemberPortalProps) {
 
   if (!currentMember) {
     return (
-      <Card className="p-12">
-        <div className="text-center">
-          <UserCircle size={64} className="mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-semibold mb-2">Member Not Found</h2>
-          <p className="text-muted-foreground">
-            Please log in to access your member portal.
-          </p>
-        </div>
-      </Card>
+      <MemberPortalLogin
+        onLoginSuccess={(member) => {
+          setCurrentMember(member)
+          toast.success('Welcome back!', {
+            description: `Successfully logged in as ${member.firstName} ${member.lastName}`
+          })
+        }}
+        onForgotPassword={(email) => {
+          toast.info('Password Reset Requested', {
+            description: `Password reset instructions have been sent to ${email}`
+          })
+        }}
+      />
     )
   }
 
@@ -463,3 +468,5 @@ export function MemberPortal({ memberId }: MemberPortalProps) {
     </div>
   )
 }
+
+export default MemberPortal

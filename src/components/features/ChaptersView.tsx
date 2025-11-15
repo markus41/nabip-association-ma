@@ -465,3 +465,5 @@ export function ChaptersView({ chapters, members = [], events = [], loading }: C
     </div>
   )
 }
+
+export default ChaptersView

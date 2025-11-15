@@ -24,11 +24,23 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Plus, X, ChartBar, Table as TableIcon, FileText } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import type { Report, ReportColumn } from '@/lib/types'
 
 interface ReportBuilderProps {
   open: boolean
   onClose: () => void
-  onSave: (report: any) => void
+  onSave: (report: Report) => void
+}
+
+interface AvailableField {
+  field: string
+  label: string
+  type: 'string' | 'number' | 'date' | 'boolean'
+  category: string
+}
+
+interface SelectedColumn extends ReportColumn {
+  category: string
 }
 
 const availableFields = [
@@ -63,19 +75,19 @@ const aggregateFunctions = [
 export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
   const [reportName, setReportName] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState('custom')
-  const [selectedColumns, setSelectedColumns] = useState<any[]>([])
+  const [category, setCategory] = useState<Report['category']>('custom')
+  const [selectedColumns, setSelectedColumns] = useState<SelectedColumn[]>([])
   const [isPublic, setIsPublic] = useState(false)
   const [scheduleEnabled, setScheduleEnabled] = useState(false)
-  const [scheduleFrequency, setScheduleFrequency] = useState('weekly')
+  const [scheduleFrequency, setScheduleFrequency] = useState<'daily' | 'weekly' | 'monthly'>('weekly')
   const [scheduleTime, setScheduleTime] = useState('09:00')
 
-  const handleAddColumn = (field: any) => {
+  const handleAddColumn = (field: AvailableField) => {
     if (selectedColumns.find(c => c.field === field.field)) {
       toast.error('Column already added')
       return
     }
-    setSelectedColumns([...selectedColumns, { ...field, aggregate: 'none' }])
+    setSelectedColumns([...selectedColumns, { ...field, aggregate: undefined }])
   }
 
   const handleRemoveColumn = (field: string) => {
@@ -84,7 +96,11 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
 
   const handleUpdateAggregate = (field: string, aggregate: string) => {
     setSelectedColumns(
-      selectedColumns.map(c => c.field === field ? { ...c, aggregate } : c)
+      selectedColumns.map(c =>
+        c.field === field
+          ? { ...c, aggregate: aggregate === 'none' ? undefined : (aggregate as ReportColumn['aggregate']) }
+          : c
+      )
     )
   }
 
@@ -98,14 +114,17 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
       return
     }
 
-    const report = {
+    // Remove category from columns before saving (it's only for UI grouping)
+    const columnsForReport: ReportColumn[] = selectedColumns.map(({ category: _, ...col }) => col)
+
+    const report: Report = {
       id: `report-${Date.now()}`,
       name: reportName,
       description,
       category,
       createdBy: 'Current User',
       createdDate: new Date().toISOString(),
-      columns: selectedColumns,
+      columns: columnsForReport,
       isPublic,
       schedule: scheduleEnabled ? {
         frequency: scheduleFrequency,
@@ -117,7 +136,8 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
     onSave(report)
     toast.success('Report created successfully')
     onClose()
-    
+
+    // Reset form
     setReportName('')
     setDescription('')
     setCategory('custom')
@@ -172,7 +192,7 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
 
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
-              <Select value={category} onValueChange={setCategory}>
+              <Select value={category} onValueChange={(value) => setCategory(value as Report['category'])}>
                 <SelectTrigger id="category">
                   <SelectValue />
                 </SelectTrigger>
@@ -215,7 +235,7 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
                 <div className="pl-6 space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="frequency" className="text-sm">Frequency</Label>
-                    <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
+                    <Select value={scheduleFrequency} onValueChange={(value) => setScheduleFrequency(value as 'daily' | 'weekly' | 'monthly')}>
                       <SelectTrigger id="frequency">
                         <SelectValue />
                       </SelectTrigger>
@@ -266,7 +286,7 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
                                 Aggregation
                               </Label>
                               <Select
-                                value={col.aggregate}
+                                value={col.aggregate || 'none'}
                                 onValueChange={(value) => handleUpdateAggregate(col.field, value)}
                               >
                                 <SelectTrigger className="w-full h-9 text-sm">

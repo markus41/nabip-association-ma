@@ -365,3 +365,5 @@ export function MembersView({ members, onAddMember, loading }: MembersViewProps)
     </div>
   )
 }
+
+export default MembersView

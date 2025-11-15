@@ -11,6 +11,7 @@ import { formatCurrency, formatDate } from '@/lib/data-utils'
 import { CustomLineChart, CustomBarChart } from './ChartComponents'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth/AuthContext'
 
 interface DashboardViewProps {
   stats: DashboardStats
@@ -20,21 +21,9 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ stats, upcomingEvents, recentTransactions, loading }: DashboardViewProps) {
-  const [userName, setUserName] = useState<string>('')
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const user = await window.spark.user()
-        if (user) {
-          setUserName(user.login)
-        }
-      } catch (error) {
-        console.error('Failed to fetch user:', error)
-      }
-    }
-    fetchUser()
-  }, [])
+  const { user } = useAuth()
+  const userName = user?.name || 'Demo User'
+  const userRole = user?.role || 'member'
 
   const dailyChanges = [
     { label: 'New Members', value: 3, isPositive: true },
@@ -150,8 +139,9 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
 
   return (
     <div className="space-y-6">
-      <PersonalizedGreeting 
+      <PersonalizedGreeting
         userName={userName}
+        userRole={userRole}
         dailyChanges={dailyChanges}
         loading={loading}
       />
@@ -353,3 +343,5 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
     </div>
   )
 }
+
+export default DashboardView

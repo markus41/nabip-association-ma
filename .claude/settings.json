@@ -102,6 +102,16 @@
         "path": ".claude/commands/add-command.md",
         "description": "Add a new custom command to Claude",
         "tags": ["command", "automation", "development"]
+      },
+      "fix-github-issue": {
+        "path": ".claude/commands/fix-github-issue.md",
+        "description": "Fix a single GitHub issue with comprehensive testing and documentation",
+        "tags": ["github", "bugfix", "automation", "issue-management"]
+      },
+      "fix-issues-batch": {
+        "path": ".claude/commands/fix-issues-batch.md",
+        "description": "Batch process multiple GitHub issues with intelligent agent assignment",
+        "tags": ["github", "automation", "batch", "orchestration", "issue-management"]
       }
     }
   },
@@ -140,7 +150,13 @@
   "git": {
     "defaultBranch": "main",
     "commitConventions": "conventional-commits",
-    "branchNaming": "feature/*, fix/*, docs/*, refactor/*, test/*, chore/*"
+    "branchNaming": "feature/*, fix/*, docs/*, refactor/*, test/*, chore/*",
+    "status": {
+      "maxFiles": 10,
+      "summaryOnly": false,
+      "showUntracked": true,
+      "showModified": true
+    }
   },
   "testing": {
     "framework": "vitest",

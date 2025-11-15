@@ -10,13 +10,20 @@ interface DailyChange {
 
 interface PersonalizedGreetingProps {
   userName?: string
+  userRole?: 'admin' | 'member' | 'chapter_admin' | 'state_admin'
   dailyChanges: DailyChange[]
   loading?: boolean
 }
 
+/**
+ * Establish personalized time-based greetings to improve user engagement.
+ * Dynamically selects greeting and icon based on current time of day.
+ *
+ * Best for: Dashboard welcome experiences requiring personalization
+ */
 function getGreeting(): { text: string; icon: typeof Sun } {
   const hour = new Date().getHours()
-  
+
   if (hour < 12) {
     return { text: 'Good morning', icon: SunHorizon }
   } else if (hour < 18) {
@@ -26,7 +33,24 @@ function getGreeting(): { text: string; icon: typeof Sun } {
   }
 }
 
-export function PersonalizedGreeting({ userName, dailyChanges, loading }: PersonalizedGreetingProps) {
+/**
+ * Establish role-specific messaging to streamline user workflows and provide relevant context.
+ * Adapts messaging based on user permissions and responsibilities within the organization.
+ *
+ * Best for: Multi-role platforms requiring contextual dashboard experiences
+ */
+function getRoleMessage(role?: string): string {
+  const roleMessages: Record<string, string> = {
+    admin: "You have full system access - manage members, events, and organization settings",
+    chapter_admin: "Manage your chapter's members and events",
+    state_admin: "Oversee state chapter operations and member activities",
+    member: "Welcome back - explore events, courses, and member benefits"
+  }
+
+  return roleMessages[role || 'member'] || roleMessages.member
+}
+
+export function PersonalizedGreeting({ userName, userRole, dailyChanges, loading }: PersonalizedGreetingProps) {
   const [greeting, setGreeting] = useState(getGreeting())
 
   useEffect(() => {
@@ -34,6 +58,7 @@ export function PersonalizedGreeting({ userName, dailyChanges, loading }: Person
   }, [])
 
   const GreetingIcon = greeting.icon
+  const roleMessage = getRoleMessage(userRole)
 
   if (loading) {
     return (
@@ -60,7 +85,7 @@ export function PersonalizedGreeting({ userName, dailyChanges, loading }: Person
                 {userName && <span className="text-primary">, {userName}</span>}!
               </h2>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Here's what's changed since yesterday
+                {roleMessage}
               </p>
             </div>
           </div>

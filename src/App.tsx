@@ -1,17 +1,22 @@
-import { useState, useEffect } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useState, useEffect, lazy, Suspense } from 'react'
+import { useLocalStorage } from '@/lib/useLocalStorage'
 import { Toaster } from '@/components/ui/sonner'
 import { Button } from '@/components/ui/button'
 import { CommandPalette } from '@/components/features/CommandPalette'
-import { DashboardView } from '@/components/features/DashboardView'
-import { MembersView } from '@/components/features/MembersView'
-import { EventsView } from '@/components/features/EventsView'
-import { CommunicationsView } from '@/components/features/CommunicationsView'
-import { FinanceView } from '@/components/features/FinanceView'
-import { ChaptersView } from '@/components/features/ChaptersView'
-import { LearningView } from '@/components/features/LearningView'
-import { MemberPortal } from '@/components/features/MemberPortal'
-import { ReportsView } from '@/components/features/ReportsView'
+
+// Lazy load heavy view components for code splitting
+const DashboardView = lazy(() => import('@/components/features/DashboardView'))
+const MembersView = lazy(() => import('@/components/features/MembersView'))
+const EventsView = lazy(() => import('@/components/features/EventsView'))
+const EventCreationDialog = lazy(() => import('@/components/features/EventCreationDialog'))
+const EmailCampaignsView = lazy(() => import('@/components/features/EmailCampaignsView'))
+const FinanceView = lazy(() => import('@/components/features/FinanceView'))
+const ChaptersView = lazy(() => import('@/components/features/ChaptersView'))
+const ChapterAdminView = lazy(() => import('@/components/features/ChapterAdminView'))
+const LearningView = lazy(() => import('@/components/features/LearningView'))
+const MemberPortal = lazy(() => import('@/components/features/MemberPortal'))
+const ReportsView = lazy(() => import('@/components/features/ReportsView'))
+const AddMemberDialog = lazy(() => import('@/components/features/AddMemberDialog'))
 import {
   ChartBar,
   UserCircle,
@@ -35,24 +40,34 @@ import {
   generateReports,
   calculateDashboardStats
 } from '@/lib/data-utils'
-import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report } from '@/lib/types'
+import type { Member, Chapter, Event, Transaction, DashboardStats, Course, Enrollment, Report } from '@/lib/types'
+import type { EmailCampaign, EmailTemplate } from '@/lib/email-types'
+import { emailTemplates } from '@/lib/email-templates'
 import { toast } from 'sonner'
+import { v4 as uuidv4 } from 'uuid'
+import { useAuth } from '@/lib/auth/AuthContext'
+import type { RoleName } from '@/lib/rbac'
+import { RoleSwitcher } from '@/components/features/RoleSwitcher'
 
-type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal'
+type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'chapter-admin' | 'learning' | 'reports' | 'portal'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
-  const [isLoading, setIsLoading] = useState(true)
-  
-  const [members, setMembers] = useKV<Member[]>('ams-members', [])
-  const [chapters, setChapters] = useKV<Chapter[]>('ams-chapters', [])
-  const [events, setEvents] = useKV<Event[]>('ams-events', [])
-  const [transactions, setTransactions] = useKV<Transaction[]>('ams-transactions', [])
-  const [campaigns, setCampaigns] = useKV<Campaign[]>('ams-campaigns', [])
-  const [courses, setCourses] = useKV<Course[]>('ams-courses', [])
-  const [enrollments, setEnrollments] = useKV<Enrollment[]>('ams-enrollments', [])
-  const [reports, setReports] = useKV<Report[]>('ams-reports', [])
-  
+  const [isLoading, setIsLoading] = useState(false) // Demo mode: no loading needed
+  const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
+  const [showEventCreationDialog, setShowEventCreationDialog] = useState(false)
+  const { user } = useAuth()
+
+  // All hooks must be called before any conditional returns
+  const [members, setMembers] = useLocalStorage<Member[]>('ams-members', [])
+  const [chapters, setChapters] = useLocalStorage<Chapter[]>('ams-chapters', [])
+  const [events, setEvents] = useLocalStorage<Event[]>('ams-events', [])
+  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('ams-transactions', [])
+  const [emailCampaigns, setEmailCampaigns] = useLocalStorage<EmailCampaign[]>('ams-email-campaigns', [])
+  const [templates] = useLocalStorage<EmailTemplate[]>('ams-email-templates', emailTemplates)
+  const [courses, setCourses] = useLocalStorage<Course[]>('ams-courses', [])
+  const [enrollments, setEnrollments] = useLocalStorage<Enrollment[]>('ams-enrollments', [])
+  const [reports, setReports] = useLocalStorage<Report[]>('ams-reports', [])
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
     activeMembers: 0,
@@ -67,53 +82,54 @@ function App() {
   })
 
   useEffect(() => {
-    const initializeData = async () => {
-      setIsLoading(true)
-      
-      if (!members || members.length === 0) {
-        const newMembers = generateMembers(100)
-        setMembers(newMembers)
-      }
-      
-      if (!chapters || chapters.length === 0) {
-        const newChapters = generateChapters()
-        setChapters(newChapters)
-      }
-      
-      if (!events || events.length === 0) {
-        const newEvents = generateEvents(20)
-        setEvents(newEvents)
-      }
-      
-      if (!transactions || transactions.length === 0) {
-        const newTransactions = generateTransactions(50)
-        setTransactions(newTransactions)
-      }
-      
-      if (!campaigns || campaigns.length === 0) {
-        const newCampaigns = generateCampaigns(15)
-        setCampaigns(newCampaigns)
-      }
-      
-      if (!courses || courses.length === 0) {
-        const newCourses = generateCourses(12)
-        setCourses(newCourses)
-        
-        const courseIds = newCourses.map(c => c.id)
-        const newEnrollments = generateEnrollments(30, courseIds)
-        setEnrollments(newEnrollments)
-      }
-      
-      if (!reports || reports.length === 0) {
-        const newReports = generateReports(20)
-        setReports(newReports)
-      }
-      
-      setTimeout(() => setIsLoading(false), 500)
+    // Demo mode: Initialize data synchronously on first load
+    if (!user) return
+
+    console.log('[App] Initializing data for demo user:', user.email)
+
+    if (!members || members.length === 0) {
+      const newMembers = generateMembers(100)
+      setMembers(newMembers)
     }
-    
-    initializeData()
-  }, [])
+
+    if (!chapters || chapters.length === 0) {
+      const newChapters = generateChapters()
+      setChapters(newChapters)
+    }
+
+    if (!events || events.length === 0) {
+      const newEvents = generateEvents(20)
+      setEvents(newEvents)
+    }
+
+    if (!transactions || transactions.length === 0) {
+      const newTransactions = generateTransactions(50)
+      setTransactions(newTransactions)
+    }
+
+    if (!courses || courses.length === 0) {
+      const newCourses = generateCourses(12)
+      setCourses(newCourses)
+
+      const courseIds = newCourses.map(c => c.id)
+      const newEnrollments = generateEnrollments(30, courseIds)
+      setEnrollments(newEnrollments)
+    }
+
+    if (!reports || reports.length === 0) {
+      const newReports = generateReports(20)
+      setReports(newReports)
+    }
+  }, [user?.id]) // Only re-run when user changes
+
+  // Redirect chapter admins to their view by default
+  useEffect(() => {
+    if (user && user.role === 'chapter_admin') {
+      setCurrentView('chapter-admin')
+    } else if (user && user.role !== 'chapter_admin' && currentView === 'chapter-admin') {
+      setCurrentView('dashboard')
+    }
+  }, [user])
 
   useEffect(() => {
     if (members && members.length > 0 && events && events.length > 0 && transactions && transactions.length > 0) {
@@ -144,38 +160,172 @@ function App() {
   }
 
   const handleAddMember = () => {
-    toast.success('Add Member', {
-      description: 'Member creation dialog would open here.'
-    })
+    setShowAddMemberDialog(true)
+  }
+
+  const handleMemberAdded = (newMember: Member) => {
+    setMembers([...members, newMember])
   }
 
   const handleAddEvent = () => {
-    toast.success('Create Event', {
-      description: 'Event creation wizard would open here.'
+    setShowEventCreationDialog(true)
+  }
+
+  const handleCreateEvent = (eventData: Omit<Event, 'id' | 'registeredCount' | 'waitlistCount'>) => {
+    const newEvent: Event = {
+      ...eventData,
+      id: uuidv4(),
+      registeredCount: 0,
+      waitlistCount: 0,
+    }
+    
+    setEvents([...(events || []), newEvent])
+    
+    toast.success('Event Created', {
+      description: `${newEvent.name} has been created successfully.`
     })
   }
 
-  const handleNewCampaign = () => {
-    toast.success('New Campaign', {
-      description: 'Campaign builder would open here.'
-    })
+  /**
+   * Establish comprehensive campaign creation workflow to streamline
+   * member communications across NABIP's hierarchical structure.
+   *
+   * Validates required fields, generates unique IDs, initializes metrics,
+   * and persists to useKV state with proper error handling.
+   */
+  const handleCreateCampaign = (campaignData: Partial<EmailCampaign>) => {
+    try {
+      // Validation: Ensure required fields are present
+      if (!campaignData.name || !campaignData.subject || !campaignData.templateId) {
+        toast.error('Campaign Creation Failed', {
+          description: 'Please complete all required fields: name, subject, and template.',
+        })
+        return
+      }
+
+      // Generate unique campaign ID and timestamp
+      const now = new Date().toISOString()
+      const campaignId = `camp-${uuidv4()}`
+
+      // Initialize comprehensive campaign metrics for tracking
+      const defaultMetrics = {
+        sent: 0,
+        delivered: 0,
+        opened: 0,
+        clicked: 0,
+        bounced: 0,
+        spamReports: 0,
+        unsubscribed: 0,
+        deliveryRate: 0,
+        openRate: 0,
+        clickRate: 0,
+        clickToOpenRate: 0,
+        bounceRate: 0,
+        unsubscribeRate: 0,
+        uniqueOpens: 0,
+        uniqueClicks: 0,
+        totalOpens: 0,
+        totalClicks: 0,
+      }
+
+      // Construct complete campaign object with all required fields
+      const newCampaign: EmailCampaign = {
+        id: campaignId,
+        name: campaignData.name,
+        templateId: campaignData.templateId,
+        subject: campaignData.subject,
+        previewText: campaignData.previewText || '',
+        fromName: campaignData.fromName || 'NABIP',
+        fromEmail: campaignData.fromEmail || 'noreply@nabip.org',
+        replyTo: campaignData.replyTo || 'support@nabip.org',
+
+        // Segmentation configuration
+        segmentRules: campaignData.segmentRules || [],
+        estimatedRecipients: campaignData.estimatedRecipients || 0,
+        actualRecipients: undefined,
+
+        // Scheduling details
+        scheduleType: campaignData.scheduleType || 'immediate',
+        scheduledAt: campaignData.scheduledAt,
+        timezone: campaignData.timezone,
+        recurringConfig: undefined,
+
+        // A/B Testing configuration
+        abTestEnabled: campaignData.abTestEnabled || false,
+        abTestConfig: campaignData.abTestConfig,
+        winningVariant: undefined,
+
+        // Campaign status and timing
+        status: campaignData.status || 'draft',
+        sentAt: campaignData.status === 'sending' ? now : undefined,
+        completedAt: undefined,
+
+        // Performance tracking
+        metrics: defaultMetrics,
+
+        // Metadata for audit trail
+        createdAt: now,
+        updatedAt: now,
+        createdBy: 'current-user', // TODO: Replace with actual user ID from auth
+        tags: campaignData.tags || [],
+        notes: campaignData.notes,
+      }
+
+      // Persist campaign to state
+      setEmailCampaigns([...(emailCampaigns || []), newCampaign])
+
+      // Success feedback with campaign details
+      toast.success('Campaign Created Successfully', {
+        description: `${newCampaign.name} ${
+          newCampaign.status === 'scheduled'
+            ? `scheduled for ${new Date(newCampaign.scheduledAt!).toLocaleDateString()}`
+            : newCampaign.status === 'sending'
+            ? 'is now sending'
+            : 'saved as draft'
+        }`,
+      })
+
+      // Log creation event for debugging and analytics
+      console.log('[Campaign Created]', {
+        id: campaignId,
+        name: newCampaign.name,
+        status: newCampaign.status,
+        recipients: newCampaign.estimatedRecipients,
+        template: newCampaign.templateId,
+        timestamp: now,
+      })
+    } catch (error) {
+      // Comprehensive error handling with user-friendly messaging
+      console.error('[Campaign Creation Error]', error)
+      toast.error('Campaign Creation Failed', {
+        description: 'An unexpected error occurred. Please try again or contact support.',
+      })
+    }
   }
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: ChartBar },
-    { id: 'members', label: 'Members', icon: UserCircle },
-    { id: 'events', label: 'Events', icon: CalendarDots },
-    { id: 'communications', label: 'Communications', icon: EnvelopeSimple },
-    { id: 'finance', label: 'Finance', icon: CurrencyDollar },
-    { id: 'chapters', label: 'Chapters', icon: Buildings },
-    { id: 'learning', label: 'Learning', icon: GraduationCap },
-    { id: 'reports', label: 'Reports', icon: FileText },
-    { id: 'portal', label: 'My Portal', icon: House }
-  ]
+  // Navigation items based on user role
+  const navItems = user?.role === 'chapter_admin'
+    ? [
+        { id: 'chapter-admin', label: 'My Chapter', icon: Buildings, roles: ['chapter_admin'] as RoleName[] },
+        { id: 'members', label: 'Members', icon: UserCircle, roles: ['chapter_admin'] as RoleName[] },
+        { id: 'events', label: 'Events', icon: CalendarDots, roles: ['chapter_admin'] as RoleName[] },
+        { id: 'communications', label: 'Communications', icon: EnvelopeSimple, roles: ['chapter_admin'] as RoleName[] },
+        { id: 'reports', label: 'Reports', icon: FileText, roles: ['chapter_admin'] as RoleName[] },
+        { id: 'portal', label: 'My Portal', icon: House, roles: ['chapter_admin', 'member'] as RoleName[] }
+      ]
+    : [
+        { id: 'dashboard', label: 'Dashboard', icon: ChartBar, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'members', label: 'Members', icon: UserCircle, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'events', label: 'Events', icon: CalendarDots, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'communications', label: 'Communications', icon: EnvelopeSimple, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'finance', label: 'Finance', icon: CurrencyDollar, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'chapters', label: 'Chapters', icon: Buildings, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'learning', label: 'Learning', icon: GraduationCap, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'reports', label: 'Reports', icon: FileText, roles: ['national_admin', 'state_admin'] as RoleName[] },
+        { id: 'portal', label: 'My Portal', icon: House, roles: ['national_admin', 'state_admin', 'member'] as RoleName[] }
+      ]
 
   const upcomingEvents = (events || [])
-    .filter(e => e.status === 'published' && new Date(e.startDate) > new Date())
-    .slice(0, 5)
 
   return (
     <div className="min-h-screen bg-background">
@@ -186,27 +336,33 @@ function App() {
               <Buildings size={24} weight="duotone" className="text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">NABIP AMS</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-semibold tracking-tight">NABIP AMS</h1>
+                <span className="text-xs px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 font-medium">DEMO</span>
+              </div>
               <p className="text-xs text-muted-foreground">Association Management System</p>
             </div>
           </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden md:flex items-center gap-2"
-            onClick={() => {
-              const event = new KeyboardEvent('keydown', {
-                key: 'k',
-                metaKey: true,
-                bubbles: true
-              })
-              document.dispatchEvent(event)
-            }}
-          >
-            <Command size={14} weight="bold" />
-            <span className="text-muted-foreground">⌘K</span>
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <RoleSwitcher />
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden md:flex items-center gap-2"
+              onClick={() => {
+                const event = new KeyboardEvent('keydown', {
+                  key: 'k',
+                  metaKey: true,
+                  bubbles: true
+                })
+                document.dispatchEvent(event)
+              }}
+            >
+              <Command size={14} weight="bold" />
+              <span className="text-muted-foreground">⌘K</span>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -236,14 +392,22 @@ function App() {
         </aside>
 
         <main className="flex-1 p-6 lg:p-8 pb-24 lg:pb-8 overflow-y-auto">
-          {currentView === 'dashboard' && (
-            <DashboardView
-              stats={stats}
-              upcomingEvents={upcomingEvents}
-              recentTransactions={(transactions || []).slice(0, 8)}
-              loading={isLoading}
-            />
-          )}
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-muted-foreground text-sm">Loading...</p>
+              </div>
+            </div>
+          }>
+            {currentView === 'dashboard' && (
+              <DashboardView
+                stats={stats}
+                upcomingEvents={upcomingEvents}
+                recentTransactions={(transactions || []).slice(0, 8)}
+                loading={isLoading}
+              />
+            )}
           {currentView === 'members' && (
             <MembersView
               members={members || []}
@@ -260,9 +424,11 @@ function App() {
             />
           )}
           {currentView === 'communications' && (
-            <CommunicationsView
-              campaigns={campaigns || []}
-              onNewCampaign={handleNewCampaign}
+            <EmailCampaignsView
+              campaigns={emailCampaigns || []}
+              templates={templates || []}
+              members={members || []}
+              onCreateCampaign={handleCreateCampaign}
               loading={isLoading}
             />
           )}
@@ -272,19 +438,46 @@ function App() {
           {currentView === 'chapters' && (
             <ChaptersView chapters={chapters || []} members={members || []} events={events || []} loading={isLoading} />
           )}
+          {currentView === 'chapter-admin' && (
+            <ChapterAdminView
+              chapters={chapters || []}
+              members={members || []}
+              events={events || []}
+              transactions={transactions || []}
+              onAddMember={handleAddMember}
+              onAddEvent={handleAddEvent}
+              loading={isLoading}
+            />
+          )}
           {currentView === 'learning' && (
             <LearningView
               courses={courses || []}
               enrollments={enrollments || []}
               loading={isLoading}
+              onAddCourse={(courseData) => {
+                const newCourse: Course = {
+                  id: `course_${Date.now()}`,
+                  ...courseData,
+                }
+                setCourses([...(courses || []), newCourse])
+              }}
             />
           )}
           {currentView === 'reports' && (
-            <ReportsView reports={reports || []} loading={isLoading} />
+            <ReportsView
+              reports={reports || []}
+              onUpdateReports={setReports}
+              loading={isLoading}
+              members={members || []}
+              events={events || []}
+              transactions={transactions || []}
+              chapters={chapters || []}
+            />
           )}
-          {currentView === 'portal' && (
-            <MemberPortal memberId="current-member-id" />
-          )}
+            {currentView === 'portal' && (
+              <MemberPortal memberId="current-member-id" />
+            )}
+          </Suspense>
         </main>
       </div>
 
@@ -313,6 +506,20 @@ function App() {
       </div>
 
       <CommandPalette onNavigate={handleNavigate} />
+      <Suspense fallback={null}>
+        <AddMemberDialog
+          open={showAddMemberDialog}
+          onOpenChange={setShowAddMemberDialog}
+          onAddMember={handleMemberAdded}
+          chapters={chapters || []}
+        />
+        <EventCreationDialog
+          open={showEventCreationDialog}
+          onOpenChange={setShowEventCreationDialog}
+          onCreateEvent={handleCreateEvent}
+          chapters={(chapters || []).map(c => ({ id: c.id, name: c.name }))}
+        />
+      </Suspense>
       <Toaster />
     </div>
   )
