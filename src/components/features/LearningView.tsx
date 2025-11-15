@@ -79,6 +79,12 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
     })
   }
 
+  const handlePreview = (course: Course) => {
+    toast.info(`Previewing ${course.name}`, {
+      description: 'Opening course preview...'
+    })
+  }
+
   const categories = Array.from(new Set(courses.map(c => c.category)))
 
   return (
@@ -436,7 +442,11 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
                     ? 'Enroll Now'
                     : `Enroll for ${formatCurrency(selectedCourse.price)}`}
                 </Button>
-                <Button variant="outline" className="flex-1">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => handlePreview(selectedCourse)}
+                >
                   Course Preview
                 </Button>
               </div>
