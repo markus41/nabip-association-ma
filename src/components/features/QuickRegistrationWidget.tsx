@@ -6,30 +6,30 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
 import {
-  Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Card } from '@/components/ui/card'
+  Dialog
+} from '@
 import {
-  UserPlus,
   Ticket,
-  CheckCircle,
-  MagnifyingGlass,
-  Users,
+  MagnifyingGla
   ListChecks,
-  Sparkle,
   CalendarDots
-} from '@phosphor-icons/react'
-import type { Event, Member, TicketType } from '@/lib/types'
-import { formatCurrency } from '@/lib/data-utils'
-import { toast } from 'sonner'
+import type { Event, Member, TicketType } f
+import {
+
+  event: 
+  onRegister: 
+}
+export f
+  members,
+  similarE
+  const [isOpe
+  const [selectedMember, setSe
+  const [registrationComplete, setRegistrationComplete] = us
+  const isFull = event.registeredCount >= event.c
+  const availabilityPercentage
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface QuickRegistrationWidgetProps {
@@ -254,92 +254,92 @@ export function QuickRegistrationWidget({
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-2"
-                  >
-                    <label className="text-sm font-medium">Select Ticket Type</label>
-                    <Select value={selectedTicketType} onValueChange={setSelectedTicketType}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose ticket type..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableTickets.map((ticket) => (
-                          <SelectItem key={ticket.id} value={ticket.id}>
-                            <div className="flex items-center justify-between w-full gap-4">
-                              <span className="font-medium">{ticket.name}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground">
-                                  {ticket.capacity - ticket.sold} left
-                                </span>
-                                <span className="font-bold">{formatCurrency(ticket.price)}</span>
-                              </div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </motion.div>
-                )}
-
-                {isFull && similarEvents.length > 0 && (
-                  <Card className="p-4 bg-blue-50 border-blue-200">
+                {is
                     <div className="flex items-start gap-3 mb-3">
-                      <Sparkle size={20} weight="fill" className="text-blue-600 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="font-semibold text-blue-900">Similar Events Available</p>
-                        <p className="text-xs text-blue-700 mt-0.5">
-                          These events might interest you
+                        <p className=
                         </p>
-                      </div>
                     </div>
-                    <div className="space-y-2">
-                      {similarEvents.slice(0, 2).map((similarEvent) => (
-                        <button
+                      {similarEvents.
                           key={similarEvent.id}
-                          className="w-full p-3 bg-white border border-blue-200 rounded-lg hover:border-blue-300 transition-all text-left group"
                         >
-                          <div className="flex items-start gap-2">
                             <CalendarDots
-                              size={18}
                               weight="duotone"
-                              className="text-blue-600 flex-shrink-0 mt-0.5"
                             />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium group-hover:text-blue-600 transition-colors line-clamp-1">
-                                {similarEvent.name}
+                              <p className="text-sm font-medium group-hover:text
                               </p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {new Date(similarEvent.startDate).toLocaleDateString()} •{' '}
-                                {similarEvent.capacity - similarEvent.registeredCount} seats available
+                                {new Da
                               </p>
-                            </div>
                           </div>
-                        </button>
                       ))}
-                    </div>
                   </Card>
-                )}
 
-                <div className="flex gap-3 pt-2">
                   <Button
-                    variant="outline"
-                    onClick={() => setIsOpen(false)}
-                    className="flex-1"
+                    onClick={
                   >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleRegister}
-                    disabled={!selectedMember || !selectedTicketType}
+                  
+
                     className="flex-1"
-                  >
                     <CheckCircle size={18} className="mr-2" />
-                    Confirm Registration
                   </Button>
-                </div>
               </motion.div>
-            )}
-          </AnimatePresence>
-        </DialogContent>
+          </AnimatePresence
       </Dialog>
-    </>
   )
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
