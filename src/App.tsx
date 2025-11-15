@@ -296,7 +296,11 @@ function App() {
             />
           )}
           {currentView === 'reports' && (
-            <ReportsView reports={reports || []} loading={isLoading} />
+            <ReportsView
+              reports={reports || []}
+              onUpdateReports={setReports}
+              loading={isLoading}
+            />
           )}
           {currentView === 'portal' && (
             <MemberPortal memberId="current-member-id" />

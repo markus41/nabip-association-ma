@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,8 +36,8 @@ import {
   MagnifyingGlass,
   Clock,
   ChartLine,
-  ChartPie,
-  Eye
+  Eye,
+  Warning
 } from '@phosphor-icons/react'
 import type { Report } from '@/lib/types'
 import { formatDate } from '@/lib/data-utils'
@@ -52,21 +52,32 @@ import {
 
 interface ReportsViewProps {
   reports: Report[]
+  onUpdateReports?: (reports: Report[]) => void
   loading?: boolean
 }
 
-export function ReportsView({ reports, loading }: ReportsViewProps) {
+export function ReportsView({ reports, onUpdateReports, loading }: ReportsViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [builderOpen, setBuilderOpen] = useState(false)
-  const [localReports, setLocalReports] = useState(reports)
   const [reportData, setReportData] = useState<any[]>([])
   const [isRunning, setIsRunning] = useState(false)
+  const [executionError, setExecutionError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'details' | 'preview'>('details')
 
+  // Sync selected report with latest data from reports array
+  useEffect(() => {
+    if (selectedReport) {
+      const updatedReport = reports.find(r => r.id === selectedReport.id)
+      if (updatedReport) {
+        setSelectedReport(updatedReport)
+      }
+    }
+  }, [reports, selectedReport?.id])
+
   const filteredReports = useMemo(() => {
-    return localReports.filter(report => {
+    return reports.filter(report => {
       const matchesSearch =
         report.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         report.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -75,73 +86,102 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
 
       return matchesSearch && matchesCategory
     }).sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime())
-  }, [localReports, searchQuery, categoryFilter])
+  }, [reports, searchQuery, categoryFilter])
 
   const handleSaveReport = (report: Report) => {
-    setLocalReports([...localReports, report])
+    if (!onUpdateReports) {
+      toast.error('Unable to save report', {
+        description: 'Report update handler not configured'
+      })
+      return
+    }
+
+    try {
+      const updatedReports = [...reports, report]
+      onUpdateReports(updatedReports)
+      toast.success('Report created successfully', {
+        description: `${report.name} has been added to your reports`
+      })
+    } catch (error) {
+      toast.error('Failed to create report', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    }
   }
 
-  const generateReportData = (report: Report, rowCount: number = 50) => {
+  const generateReportData = (report: Report, rowCount: number = 50): any[] => {
     const data: any[] = []
-    
+
     if (!report.columns || report.columns.length === 0) {
-      return data
+      throw new Error('Report has no columns configured')
     }
 
-    for (let i = 0; i < rowCount; i++) {
-      const row: any = { id: i + 1 }
-      
-      report.columns.forEach(column => {
-        switch (column.type) {
-          case 'string':
-            if (column.field.includes('name') || column.field.includes('Name')) {
-              const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda']
-              const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis']
-              row[column.field] = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`
-            } else if (column.field.includes('email') || column.field.includes('Email')) {
-              row[column.field] = `user${i + 1}@example.com`
-            } else if (column.field.includes('status') || column.field.includes('Status')) {
-              row[column.field] = ['Active', 'Pending', 'Completed'][Math.floor(Math.random() * 3)]
-            } else if (column.field.includes('type') || column.field.includes('Type')) {
-              row[column.field] = ['Individual', 'Organizational', 'Student'][Math.floor(Math.random() * 3)]
-            } else if (column.field.includes('chapter') || column.field.includes('Chapter')) {
-              row[column.field] = ['California', 'Texas', 'Florida', 'New York'][Math.floor(Math.random() * 4)]
-            } else {
-              row[column.field] = `Sample ${column.label}`
-            }
-            break
-          
-          case 'number':
-            if (column.field.includes('amount') || column.field.includes('revenue') || column.field.includes('price')) {
-              row[column.field] = Math.floor(Math.random() * 10000) + 1000
-            } else if (column.field.includes('count') || column.field.includes('Count')) {
-              row[column.field] = Math.floor(Math.random() * 100) + 1
-            } else if (column.field.includes('score') || column.field.includes('Score')) {
-              row[column.field] = Math.floor(Math.random() * 100)
-            } else {
-              row[column.field] = Math.floor(Math.random() * 1000)
-            }
-            break
-          
-          case 'date':
-            const randomDate = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000)
-            row[column.field] = randomDate.toLocaleDateString()
-            break
-          
-          default:
-            row[column.field] = `Data ${i + 1}`
-        }
-      })
-      
-      data.push(row)
+    try {
+      for (let i = 0; i < rowCount; i++) {
+        const row: any = { id: i + 1 }
+
+        report.columns.forEach(column => {
+          switch (column.type) {
+            case 'string':
+              if (column.field.includes('name') || column.field.includes('Name')) {
+                const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda']
+                const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis']
+                row[column.field] = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`
+              } else if (column.field.includes('email') || column.field.includes('Email')) {
+                row[column.field] = `user${i + 1}@example.com`
+              } else if (column.field.includes('status') || column.field.includes('Status')) {
+                row[column.field] = ['Active', 'Pending', 'Completed'][Math.floor(Math.random() * 3)]
+              } else if (column.field.includes('type') || column.field.includes('Type')) {
+                row[column.field] = ['Individual', 'Organizational', 'Student'][Math.floor(Math.random() * 3)]
+              } else if (column.field.includes('chapter') || column.field.includes('Chapter')) {
+                row[column.field] = ['California', 'Texas', 'Florida', 'New York'][Math.floor(Math.random() * 4)]
+              } else {
+                row[column.field] = `Sample ${column.label}`
+              }
+              break
+
+            case 'number':
+              if (column.field.includes('amount') || column.field.includes('revenue') || column.field.includes('price')) {
+                row[column.field] = Math.floor(Math.random() * 10000) + 1000
+              } else if (column.field.includes('count') || column.field.includes('Count')) {
+                row[column.field] = Math.floor(Math.random() * 100) + 1
+              } else if (column.field.includes('score') || column.field.includes('Score')) {
+                row[column.field] = Math.floor(Math.random() * 100)
+              } else {
+                row[column.field] = Math.floor(Math.random() * 1000)
+              }
+              break
+
+            case 'date':
+              const randomDate = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000)
+              row[column.field] = randomDate.toLocaleDateString()
+              break
+
+            default:
+              row[column.field] = `Data ${i + 1}`
+          }
+        })
+
+        data.push(row)
+      }
+
+      return data
+    } catch (error) {
+      throw new Error(`Failed to generate report data: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
-    
-    return data
   }
 
   const handleRunReport = async (report: Report) => {
+    if (!report.columns || report.columns.length === 0) {
+      toast.error('Cannot run report', {
+        description: 'This report has no columns configured'
+      })
+      return
+    }
+
     setIsRunning(true)
-    
+    setExecutionError(null)
+
     toast.info(`Running report: ${report.name}`, {
       description: 'Generating report data...'
     })
@@ -155,16 +195,13 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
       setReportData(data)
 
       // Update the report's last run date
-      const updatedReports = localReports.map(r => 
-        r.id === report.id 
-          ? { ...r, lastRunDate: new Date().toISOString() }
-          : r
-      )
-      setLocalReports(updatedReports)
-
-      // Update selected report
-      if (selectedReport?.id === report.id) {
-        setSelectedReport({ ...report, lastRunDate: new Date().toISOString() })
+      if (onUpdateReports) {
+        const updatedReports = reports.map(r =>
+          r.id === report.id
+            ? { ...r, lastRunDate: new Date().toISOString() }
+            : r
+        )
+        onUpdateReports(updatedReports)
       }
 
       // Switch to preview tab to show results
@@ -174,8 +211,11 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
         description: `Generated ${data.length} rows of data.`
       })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      setExecutionError(errorMessage)
+
       toast.error('Failed to run report', {
-        description: 'An error occurred while generating the report.'
+        description: errorMessage
       })
     } finally {
       setIsRunning(false)
@@ -183,9 +223,23 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
   }
 
   const handleExportReport = (report: Report, format: string) => {
-    toast.success(`Exporting to ${format.toUpperCase()}`, {
-      description: 'Your download will start shortly.'
-    })
+    if (reportData.length === 0) {
+      toast.error('No data to export', {
+        description: 'Please run the report first to generate data'
+      })
+      return
+    }
+
+    try {
+      // Simulate export - in production, this would call actual export service
+      toast.success(`Exporting to ${format.toUpperCase()}`, {
+        description: 'Your download will start shortly.'
+      })
+    } catch (error) {
+      toast.error('Export failed', {
+        description: error instanceof Error ? error.message : 'Unknown error occurred'
+      })
+    }
   }
 
   const categories = ['membership', 'financial', 'events', 'engagement', 'custom']
@@ -259,7 +313,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 Total Reports
               </p>
               <p className="text-2xl font-semibold tabular-nums">
-                {loading ? '...' : localReports.length}
+                {loading ? '...' : reports.length}
               </p>
             </div>
           </div>
@@ -275,7 +329,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 Scheduled
               </p>
               <p className="text-2xl font-semibold tabular-nums">
-                {loading ? '...' : localReports.filter(r => r.schedule).length}
+                {loading ? '...' : reports.filter(r => r.schedule).length}
               </p>
             </div>
           </div>
@@ -291,7 +345,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 Run Today
               </p>
               <p className="text-2xl font-semibold tabular-nums">
-                {loading ? '...' : localReports.filter(r => {
+                {loading ? '...' : reports.filter(r => {
                   if (!r.lastRunDate) return false
                   const lastRun = new Date(r.lastRunDate)
                   const today = new Date()
@@ -312,7 +366,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 Public Reports
               </p>
               <p className="text-2xl font-semibold tabular-nums">
-                {loading ? '...' : localReports.filter(r => r.isPublic).length}
+                {loading ? '...' : reports.filter(r => r.isPublic).length}
               </p>
             </div>
           </div>
@@ -467,6 +521,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                         setSelectedReport(report)
                         setActiveTab('details')
                         setReportData([])
+                        setExecutionError(null)
                       }}
                     >
                       <TableCell>
@@ -514,6 +569,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                             e.stopPropagation()
                             handleRunReport(report)
                           }}
+                          disabled={isRunning}
                         >
                           <Play size={16} />
                         </Button>
@@ -532,6 +588,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
           setSelectedReport(null)
           setActiveTab('details')
           setReportData([])
+          setExecutionError(null)
         }
       }}>
         <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
@@ -548,7 +605,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                 </TabsTrigger>
                 <TabsTrigger value="preview" className="gap-2">
                   <Eye size={16} />
-                  Web View
+                  Preview
                 </TabsTrigger>
               </TabsList>
 
@@ -642,6 +699,18 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
 
               <TabsContent value="preview" className="flex-1 overflow-y-auto pr-2 mt-4">
                 <div className="space-y-4">
+                  {executionError && (
+                    <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+                      <div className="flex items-start gap-3">
+                        <Warning size={20} className="text-destructive mt-0.5" weight="fill" />
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-destructive mb-1">Execution Error</h4>
+                          <p className="text-sm text-muted-foreground">{executionError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="rounded-lg border bg-card p-6">
                     <div className="mb-6">
                       <h2 className="text-2xl font-semibold mb-2">{selectedReport.name}</h2>
@@ -668,13 +737,13 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                             Last run: {selectedReport.lastRunDate ? formatDate(selectedReport.lastRunDate) : 'Just now'}
                           </Badge>
                         </div>
-                        <div className="max-h-[400px] overflow-auto">
+                        <div className="max-h-[400px] overflow-auto rounded-lg border">
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead>ID</TableHead>
+                                <TableHead className="sticky top-0 bg-background">ID</TableHead>
                                 {selectedReport.columns?.map((col, idx) => (
-                                  <TableHead key={idx}>{col.label}</TableHead>
+                                  <TableHead key={idx} className="sticky top-0 bg-background">{col.label}</TableHead>
                                 ))}
                               </TableRow>
                             </TableHeader>
@@ -686,7 +755,7 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
                                     <TableCell key={colIdx}>
                                       {col.type === 'number' && typeof row[col.field] === 'number'
                                         ? row[col.field].toLocaleString()
-                                        : row[col.field]}
+                                        : row[col.field] ?? '-'}
                                     </TableCell>
                                   ))}
                                 </TableRow>
@@ -711,8 +780,8 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
               </TabsContent>
 
               <div className="flex flex-wrap gap-2 pt-4 border-t shrink-0 mt-4">
-                <Button 
-                  className="flex-1 min-w-[140px]" 
+                <Button
+                  className="flex-1 min-w-[140px]"
                   onClick={() => handleRunReport(selectedReport)}
                   disabled={isRunning}
                 >
