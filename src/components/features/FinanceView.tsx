@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,17 +12,34 @@ import {
   ArrowRight,
   Wallet,
   CalendarBlank,
-  CreditCard
+  CreditCard,
+  CaretDown,
+  CaretUp
 } from '@phosphor-icons/react'
-import type { Transaction } from '@/lib/types'
-import { formatCurrency, formatDate, getStatusColor } from '@/lib/data-utils'
+import type { Transaction, TransactionType } from '@/lib/types'
+import { formatCurrency, formatDate } from '@/lib/data-utils'
+import { InteractiveRevenueBreakdown, TransactionActions, getPaymentStatusStyle } from './InteractiveRevenueBreakdown'
+import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface FinanceViewProps {
   transactions: Transaction[]
   loading?: boolean
 }
 
+interface GroupedTransactions {
+  type: TransactionType
+  description: string
+  transactions: Transaction[]
+  totalAmount: number
+  count: number
+}
+
 export function FinanceView({ transactions, loading }: FinanceViewProps) {
+  const [period, setPeriod] = useState<'this_month' | 'last_month' | 'same_month_last_year'>('this_month')
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [runningBalance, setRunningBalance] = useState(0)
+
   const stats = useMemo(() => {
     const completed = transactions.filter(t => t.status === 'completed')
     const totalRevenue = completed.reduce((sum, t) => sum + (t.amount > 0 ? t.amount : 0), 0)
@@ -52,29 +69,66 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
     }
   }, [transactions])
 
-  const revenueCategories = [
-    {
-      label: 'Membership Dues',
-      amount: stats.membershipDues,
-      percentage: (stats.membershipDues / stats.totalRevenue) * 100,
-      color: 'bg-primary',
-      icon: CreditCard
-    },
-    {
-      label: 'Event Revenue',
-      amount: stats.eventRevenue,
-      percentage: (stats.eventRevenue / stats.totalRevenue) * 100,
-      color: 'bg-teal',
-      icon: CalendarBlank
-    },
-    {
-      label: 'Donations',
-      amount: stats.donations,
-      percentage: (stats.donations / stats.totalRevenue) * 100,
-      color: 'bg-accent',
-      icon: Wallet
+  const groupedTransactions = useMemo(() => {
+    const groups: { [key: string]: GroupedTransactions } = {}
+    
+    transactions.slice(0, 20).forEach(t => {
+      const key = `${t.type}-${t.description}`
+      if (!groups[key]) {
+        groups[key] = {
+          type: t.type,
+          description: t.description,
+          transactions: [],
+          totalAmount: 0,
+          count: 0
+        }
+      }
+      groups[key].transactions.push(t)
+      groups[key].totalAmount += t.amount
+      groups[key].count++
+    })
+
+    return Object.values(groups).sort((a, b) => 
+      new Date(b.transactions[0].date).getTime() - new Date(a.transactions[0].date).getTime()
+    )
+  }, [transactions])
+
+  const toggleGroup = (groupKey: string) => {
+    const newExpanded = new Set(expandedGroups)
+    if (newExpanded.has(groupKey)) {
+      newExpanded.delete(groupKey)
+    } else {
+      newExpanded.add(groupKey)
     }
-  ]
+    setExpandedGroups(newExpanded)
+  }
+
+  const handleSendReceipt = (transaction: Transaction) => {
+    toast.success('Receipt Sent', {
+      description: `Receipt for ${transaction.description} has been emailed.`
+    })
+  }
+
+  const handleProcessRefund = (transaction: Transaction) => {
+    toast.success('Refund Processed', {
+      description: `${formatCurrency(transaction.amount)} has been refunded.`,
+      duration: 5000
+    })
+  }
+
+  const handleViewInvoice = (transaction: Transaction) => {
+    toast.info('Opening Invoice', {
+      description: `Invoice #${transaction.referenceId || transaction.id}`
+    })
+  }
+
+  const transactionsWithBalance = useMemo(() => {
+    let balance = 10000
+    return transactions.slice(0, 20).map(t => {
+      balance += t.amount
+      return { ...t, balance }
+    })
+  }, [transactions])
 
   return (
     <div className="space-y-6">
@@ -179,65 +233,11 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
         </Card>
       </div>
 
-      <Card className="flex flex-col">
-        <div className="p-5 border-b">
-          <h2 className="text-base font-semibold">Revenue Breakdown</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Distribution by category</p>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {revenueCategories.map((category) => {
-              const Icon = category.icon
-              return (
-                <div key={category.label} className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
-                        <Icon size={18} weight="duotone" className="text-foreground" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{category.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {category.percentage.toFixed(1)}%
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-base font-semibold tabular-nums">
-                      {formatCurrency(category.amount)}
-                    </p>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${category.color} transition-all duration-500 ease-out rounded-full`}
-                      style={{ width: `${category.percentage}%` }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          
-          <div className="mt-6 pt-6 border-t">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Net Revenue</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  After {formatCurrency(stats.totalRefunds)} in refunds
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-bold tabular-nums">
-                  {formatCurrency(stats.netRevenue)}
-                </p>
-                <div className="flex items-center gap-1 text-xs text-teal mt-0.5 justify-end">
-                  <TrendUp size={12} weight="bold" />
-                  <span className="font-medium">8.2%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <InteractiveRevenueBreakdown
+        transactions={transactions}
+        period={period}
+        onPeriodChange={setPeriod}
+      />
 
       <Card className="flex flex-col overflow-hidden">
         <div className="p-5 border-b flex-shrink-0">
@@ -245,7 +245,7 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
             <div>
               <h2 className="text-base font-semibold">Recent Transactions</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Latest {transactions.slice(0, 20).length} transactions
+                Grouped by type • Showing running balance
               </p>
             </div>
             <Button variant="ghost" size="sm" className="gap-1.5 h-8 text-xs">
@@ -271,7 +271,7 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
                   </div>
                 </div>
               ))
-            ) : transactions.length === 0 ? (
+            ) : groupedTransactions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
                   <Receipt size={28} className="text-muted-foreground" />
@@ -282,8 +282,10 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
                 </p>
               </div>
             ) : (
-              transactions.slice(0, 20).map((transaction) => {
-                const isPositive = transaction.amount >= 0
+              groupedTransactions.map((group, groupIdx) => {
+                const groupKey = `${group.type}-${group.description}`
+                const isExpanded = expandedGroups.has(groupKey)
+                const isGrouped = group.count > 1
                 const typeIcons = {
                   membership_dues: CreditCard,
                   event_registration: CalendarBlank,
@@ -291,53 +293,159 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
                   refund: TrendDown,
                   late_fee: Receipt
                 }
-                const Icon = typeIcons[transaction.type] || Receipt
-                
+                const Icon = typeIcons[group.type] || Receipt
+                const mostRecentTransaction = group.transactions[0]
+                const statusStyle = getPaymentStatusStyle(mostRecentTransaction.status)
+                const StatusIcon = statusStyle.icon
+
                 return (
-                  <div
-                    key={transaction.id}
-                    className="group p-3 rounded-lg border bg-card hover:bg-muted/50 hover:border-muted-foreground/20 transition-all cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                        <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-background transition-colors">
-                          <Icon size={18} weight="duotone" className="text-foreground" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-sm">{transaction.description}</p>
-                            <Badge variant="outline" className="text-xs h-5">
-                              {transaction.type.replace('_', ' ')}
-                            </Badge>
+                  <div key={groupKey} className="space-y-1">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: groupIdx * 0.05 }}
+                      className={`group p-3 rounded-lg border bg-card hover:bg-muted/50 hover:border-muted-foreground/20 transition-all ${
+                        isExpanded ? 'border-primary/50' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                          <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 group-hover:bg-background transition-colors">
+                            <Icon size={18} weight="duotone" className="text-foreground" />
                           </div>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
-                            <span>{formatDate(transaction.date)}</span>
-                            {transaction.referenceId && (
-                              <>
-                                <span>•</span>
-                                <span className="font-mono">{transaction.referenceId}</span>
-                              </>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <p className="font-medium text-sm">{group.description}</p>
+                              {isGrouped && (
+                                <Badge variant="secondary" className="text-xs h-5">
+                                  {group.count} transactions
+                                </Badge>
+                              )}
+                              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${statusStyle.bg} ${statusStyle.border} border`}>
+                                <StatusIcon size={12} weight="fill" className={statusStyle.text} />
+                                <span className={`${statusStyle.text} font-medium capitalize`}>
+                                  {mostRecentTransaction.status}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                              <span>{formatDate(mostRecentTransaction.date)}</span>
+                              {mostRecentTransaction.referenceId && (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-mono">{mostRecentTransaction.referenceId}</span>
+                                </>
+                              )}
+                            </div>
+                            {!isExpanded && (
+                              <div className="mt-2">
+                                <TransactionActions
+                                  transaction={mostRecentTransaction}
+                                  onSendReceipt={() => handleSendReceipt(mostRecentTransaction)}
+                                  onProcessRefund={() => handleProcessRefund(mostRecentTransaction)}
+                                  onViewInvoice={() => handleViewInvoice(mostRecentTransaction)}
+                                />
+                              </div>
                             )}
-                            <Badge 
-                              variant="outline" 
-                              className={`${getStatusColor(transaction.status)} text-xs h-5`}
-                            >
-                              {transaction.status}
-                            </Badge>
                           </div>
                         </div>
+                        <div className="flex-shrink-0 text-right">
+                          <p
+                            className={`text-base font-bold tabular-nums mb-1 ${
+                              group.totalAmount >= 0 ? 'text-green-600' : 'text-red-600'
+                            }`}
+                          >
+                            {group.totalAmount >= 0 ? '+' : ''}
+                            {formatCurrency(group.totalAmount)}
+                          </p>
+                          {isGrouped && (
+                            <button
+                              onClick={() => toggleGroup(groupKey)}
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <CaretUp size={12} weight="bold" />
+                                  Collapse
+                                </>
+                              ) : (
+                                <>
+                                  <CaretDown size={12} weight="bold" />
+                                  Expand
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-shrink-0 text-right">
-                        <p
-                          className={`text-base font-bold tabular-nums ${
-                            isPositive ? 'text-teal' : 'text-destructive'
-                          }`}
+                    </motion.div>
+
+                    <AnimatePresence>
+                      {isExpanded && isGrouped && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="ml-12 space-y-1 overflow-hidden"
                         >
-                          {isPositive ? '+' : ''}
-                          {formatCurrency(transaction.amount)}
-                        </p>
-                      </div>
-                    </div>
+                          {group.transactions.map((transaction, idx) => {
+                            const statusStyle = getPaymentStatusStyle(transaction.status)
+                            const StatusIcon = statusStyle.icon
+                            const balance = transactionsWithBalance.find(t => t.id === transaction.id)?.balance || 0
+
+                            return (
+                              <motion.div
+                                key={transaction.id}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.05 }}
+                                className="p-3 rounded-lg bg-muted/50 border border-dashed"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                                      <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${statusStyle.bg} ${statusStyle.border} border`}>
+                                        <StatusIcon size={12} weight="fill" className={statusStyle.text} />
+                                        <span className={`${statusStyle.text} font-medium capitalize`}>
+                                          {transaction.status}
+                                        </span>
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">
+                                        {formatDate(transaction.date)}
+                                      </span>
+                                      {transaction.referenceId && (
+                                        <span className="text-xs text-muted-foreground font-mono">
+                                          {transaction.referenceId}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <TransactionActions
+                                      transaction={transaction}
+                                      onSendReceipt={() => handleSendReceipt(transaction)}
+                                      onProcessRefund={() => handleProcessRefund(transaction)}
+                                      onViewInvoice={() => handleViewInvoice(transaction)}
+                                    />
+                                  </div>
+                                  <div className="flex-shrink-0 text-right">
+                                    <p
+                                      className={`text-sm font-bold tabular-nums ${
+                                        transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                                      }`}
+                                    >
+                                      {transaction.amount >= 0 ? '+' : ''}
+                                      {formatCurrency(transaction.amount)}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      Balance: {formatCurrency(balance)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )
               })

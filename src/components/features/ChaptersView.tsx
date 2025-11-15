@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Buildings, Users, CalendarDots, MapPin, Plus, Table as TableIcon } from '@phosphor-icons/react'
 import { ChaptersGrid } from './ChaptersGrid'
 import { ChapterDetail } from './ChapterDetail'
+import { EnhancedChapterCard } from './EnhancedChapterCard'
 import type { Chapter, Member, Event } from '@/lib/types'
+import { toast } from 'sonner'
 
 interface ChaptersViewProps {
   chapters: Chapter[]
@@ -40,6 +42,24 @@ export function ChaptersView({ chapters, members = [], events = [], loading }: C
     if (selectedType === 'all') return chapters
     return chapters.filter(c => c.type === selectedType)
   }, [chapters, selectedType])
+
+  const handleEmailLeader = (chapter: Chapter) => {
+    toast.success('Email Opened', {
+      description: `Composing email to ${chapter.president || 'chapter leader'}`
+    })
+  }
+
+  const handleViewReport = (chapter: Chapter) => {
+    toast.info('Opening Report', {
+      description: `Loading full performance report for ${chapter.name}`
+    })
+  }
+
+  const handleCompare = (chapter: Chapter) => {
+    toast.info('Comparison View', {
+      description: `Opening comparison tool for ${chapter.name}`
+    })
+  }
 
   const stats = useMemo(() => {
     const totalMembers = chapters.reduce((sum, c) => sum + c.memberCount, 0)
@@ -380,63 +400,17 @@ export function ChaptersView({ chapters, members = [], events = [], loading }: C
                       </Card>
                     </div>
                   ) : (
-                    hierarchicalChapters.states.map((chapter) => {
-                      const localChapters = getChildChapters(chapter.id)
-                      return (
-                        <Card
-                          key={chapter.id}
-                          className="p-6 hover:shadow-lg transition-all cursor-pointer group"
-                          onClick={() => setSelectedChapter(chapter)}
-                        >
-                          <div className="space-y-4">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-lg leading-tight truncate group-hover:text-primary transition-colors">
-                                  {chapter.name}
-                                </h3>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Badge variant="outline" className="capitalize">
-                                    {chapter.type}
-                                  </Badge>
-                                  {chapter.state && (
-                                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                      <MapPin size={14} />
-                                      <span className="truncate">{chapter.state}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="w-10 h-10 rounded-lg bg-teal/10 flex items-center justify-center shrink-0">
-                                <Buildings size={20} weight="duotone" className="text-teal" />
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3 pt-3 border-t">
-                              <div>
-                                <p className="text-sm text-muted-foreground mb-1">Members</p>
-                                <p className="text-2xl font-semibold tabular-nums">
-                                  {chapter.memberCount.toLocaleString()}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground mb-1">Local</p>
-                                <p className="text-2xl font-semibold tabular-nums">
-                                  {localChapters.length}
-                                </p>
-                              </div>
-                            </div>
-
-                            {chapter.president && (
-                              <div className="pt-3 border-t">
-                                <p className="text-xs text-muted-foreground">
-                                  President: <span className="font-medium text-foreground">{chapter.president}</span>
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </Card>
-                      )
-                    })
+                    hierarchicalChapters.states.map((chapter) => (
+                      <EnhancedChapterCard
+                        key={chapter.id}
+                        chapter={chapter}
+                        allChapters={chapters}
+                        onEmailLeader={handleEmailLeader}
+                        onViewReport={handleViewReport}
+                        onCompare={handleCompare}
+                        onClick={setSelectedChapter}
+                      />
+                    ))
                   )}
                 </div>
               </div>
@@ -470,63 +444,17 @@ export function ChaptersView({ chapters, members = [], events = [], loading }: C
                   ) : (
                     filteredChapters
                       .filter(c => c.type === 'local')
-                      .map((chapter) => {
-                        const parentChapter = chapters.find(c => c.id === chapter.parentChapterId)
-                        return (
-                          <Card
-                            key={chapter.id}
-                            className="p-6 hover:shadow-lg transition-all cursor-pointer group"
-                            onClick={() => setSelectedChapter(chapter)}
-                          >
-                            <div className="space-y-4">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="font-semibold text-lg leading-tight truncate group-hover:text-primary transition-colors">
-                                    {chapter.name}
-                                  </h3>
-                                  <div className="flex items-center gap-2 mt-2">
-                                    <Badge variant="outline" className="capitalize">
-                                      {chapter.type}
-                                    </Badge>
-                                    {chapter.region && (
-                                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                        <MapPin size={14} />
-                                        <span className="truncate text-xs">{chapter.region}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-                                  <Buildings size={20} weight="duotone" className="text-accent-foreground" />
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-3 pt-3 border-t">
-                                <div>
-                                  <p className="text-sm text-muted-foreground mb-1">Members</p>
-                                  <p className="text-2xl font-semibold tabular-nums">
-                                    {chapter.memberCount.toLocaleString()}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-sm text-muted-foreground mb-1">Events</p>
-                                  <p className="text-2xl font-semibold tabular-nums">
-                                    {chapter.activeEventsCount}
-                                  </p>
-                                </div>
-                              </div>
-
-                              {parentChapter && (
-                                <div className="pt-3 border-t">
-                                  <p className="text-xs text-muted-foreground">
-                                    Part of: <span className="font-medium text-foreground">{parentChapter.name}</span>
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </Card>
-                        )
-                      })
+                      .map((chapter) => (
+                        <EnhancedChapterCard
+                          key={chapter.id}
+                          chapter={chapter}
+                          allChapters={chapters}
+                          onEmailLeader={handleEmailLeader}
+                          onViewReport={handleViewReport}
+                          onCompare={handleCompare}
+                          onClick={setSelectedChapter}
+                        />
+                      ))
                   )}
                 </div>
               </div>

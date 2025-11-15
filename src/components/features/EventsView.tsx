@@ -39,17 +39,19 @@ import {
   WarningCircle,
   Users
 } from '@phosphor-icons/react'
-import type { Event } from '@/lib/types'
+import type { Event, Member } from '@/lib/types'
 import { formatDate, formatCurrency, getStatusColor } from '@/lib/data-utils'
 import { toast } from 'sonner'
+import { QuickRegistrationWidget } from './QuickRegistrationWidget'
 
 interface EventsViewProps {
   events: Event[]
+  members?: Member[]
   onAddEvent: () => void
   loading?: boolean
 }
 
-export function EventsView({ events, onAddEvent, loading }: EventsViewProps) {
+export function EventsView({ events, members = [], onAddEvent, loading }: EventsViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
@@ -65,6 +67,24 @@ export function EventsView({ events, onAddEvent, loading }: EventsViewProps) {
       return matchesSearch && matchesStatus
     })
   }, [events, searchQuery, statusFilter])
+
+  const getSimilarEvents = (event: Event): Event[] => {
+    return events
+      .filter(e => 
+        e.id !== event.id && 
+        e.status === 'published' &&
+        new Date(e.startDate) > new Date() &&
+        e.registeredCount < e.capacity &&
+        (e.virtual === event.virtual || Math.abs(new Date(e.startDate).getTime() - new Date(event.startDate).getTime()) < 7 * 24 * 60 * 60 * 1000)
+      )
+      .slice(0, 3)
+  }
+
+  const handleRegisterMember = (eventId: string, memberId: string, ticketTypeId: string) => {
+    toast.success('Registration Confirmed', {
+      description: 'Member has been successfully registered for the event.'
+    })
+  }
 
   const stats = useMemo(() => {
     const totalEvents = events.length
@@ -471,26 +491,16 @@ export function EventsView({ events, onAddEvent, loading }: EventsViewProps) {
 
                   <div className="h-px bg-border" />
 
-                  <TooltipProvider>
-                    <div className="flex gap-2">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleViewDetails(event)
-                            }}
-                          >
-                            <Eye size={16} className="mr-2" />
-                            Details
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>View event details</TooltipContent>
-                      </Tooltip>
-
+                  <div className="grid grid-cols-2 gap-2">
+                    <TooltipProvider>
+                      <div className="col-span-2">
+                        <QuickRegistrationWidget
+                          event={event}
+                          members={members}
+                          onRegister={(memberId, ticketTypeId) => handleRegisterMember(event.id, memberId, ticketTypeId)}
+                          similarEvents={getSimilarEvents(event)}
+                        />
+                      </div>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -516,8 +526,8 @@ export function EventsView({ events, onAddEvent, loading }: EventsViewProps) {
                         </TooltipTrigger>
                         <TooltipContent>Email attendees</TooltipContent>
                       </Tooltip>
-                    </div>
-                  </TooltipProvider>
+                    </TooltipProvider>
+                  </div>
                 </div>
               </Card>
             )

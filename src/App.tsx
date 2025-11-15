@@ -254,6 +254,7 @@ function App() {
           {currentView === 'events' && (
             <EventsView
               events={events || []}
+              members={members || []}
               onAddEvent={handleAddEvent}
               loading={isLoading}
             />
