@@ -48,7 +48,8 @@
       "Bash(gh issue list:*)",
       "Bash(python:*)",
       "Bash(del \"C:\\Users\\MarkusAhling\\.claude\\CLAUDE.md\")",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(timeout 10 npm run dev:*)"
     ],
     "deny": [],
     "ask": []

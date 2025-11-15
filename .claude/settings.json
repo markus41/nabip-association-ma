@@ -150,7 +150,13 @@
   "git": {
     "defaultBranch": "main",
     "commitConventions": "conventional-commits",
-    "branchNaming": "feature/*, fix/*, docs/*, refactor/*, test/*, chore/*"
+    "branchNaming": "feature/*, fix/*, docs/*, refactor/*, test/*, chore/*",
+    "status": {
+      "maxFiles": 10,
+      "summaryOnly": false,
+      "showUntracked": true,
+      "showModified": true
+    }
   },
   "testing": {
     "framework": "vitest",
