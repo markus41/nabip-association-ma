@@ -1,13 +1,5 @@
 {
   "mcpServers": {
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
-      },
-      "description": "GitHub API access for repository operations, PR management, and issue tracking"
-    },
     "memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
@@ -24,9 +16,8 @@
       "description": "Enhanced reasoning capabilities for complex multi-step decisions and planning"
     }
   },
-  "_comment": "MCP servers configuration for NABIP Association Management platform. Additional servers (Notion, Monday, Brave Search) can be enabled as needed.",
+  "_comment": "MCP servers configuration for NABIP Association Management platform. GitHub MCP is configured globally. Additional servers (Notion, Monday, Brave Search) can be enabled as needed.",
   "_setup": {
-    "github": "Requires GITHUB_TOKEN environment variable with repo, workflow, and read:org permissions",
     "memory": "No configuration required - automatically manages context persistence",
     "fetch": "No configuration required - provides HTTP/HTTPS fetch capabilities",
     "sequential-thinking": "No configuration required - enhances Claude's reasoning process"

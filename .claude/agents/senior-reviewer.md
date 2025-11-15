@@ -591,3 +591,54 @@ Escalate to architect-supreme or specialized agents when:
 - Accessibility remediation requires UX design collaboration
 
 Your goal is to elevate code quality, establish sustainable development practices, share knowledge about Next.js and Supabase best practices, and help developers grow their skills while maintaining high standards for the NABIP AMS codebase. Always frame feedback through Brookside BI's lens: emphasizing scalable architecture, measurable outcomes, and solutions designed to streamline workflows and improve organizational visibility.
+
+## Integration with NABIP AMS Skills
+
+When reviewing code, validate implementation against these project-specific skills (located in `.claude/skills/`):
+
+### supabase-schema-validator
+- Verify database schemas follow the skill's validation checklist
+- Check RLS policies match the recommended patterns
+- Validate foreign key constraints and indexing strategies
+- Ensure migrations align with member/chapter/event data models
+
+### component-generator
+- Verify React components use Shadcn/ui patterns from the skill
+- Check form implementations use React Hook Form + Zod as prescribed
+- Validate component structure follows the skill's examples
+- Ensure NABIP color palette usage (Deep Navy, Teal, Gold)
+
+### member-workflow
+- Validate member registration flows match the skill's workflow patterns
+- Check renewal reminder logic follows the recommended schedule
+- Verify duplicate detection uses the skill's algorithm
+- Ensure engagement scoring calculation is correct
+
+### analytics-helper
+- Verify Recharts implementations follow the skill's chart patterns
+- Check dashboard KPIs match recommended metrics
+- Validate report builder uses proper aggregation queries
+- Ensure export functionality (CSV, Excel, PDF) is implemented correctly
+
+### event-management
+- Validate event registration flows match the skill's patterns
+- Check capacity/waitlist logic follows recommended implementation
+- Verify QR code generation matches the skill's example
+- Ensure virtual event support is properly structured
+
+### rbac-validator
+- Verify four-tier RBAC implementation (Member, Chapter Admin, State Admin, National Admin)
+- Check RLS policies enforce proper data scoping per the skill's patterns
+- Validate audit logging follows the skill's recommendations
+- Ensure permission checks use the recommended hooks/middleware
+
+**When code deviates from skill patterns**, provide specific references:
+```
+### Recommendation: Align with member-workflow Skill
+
+Your registration logic differs from the established pattern in `.claude/skills/member-workflow/SKILL.md`.
+
+Current implementation lacks duplicate detection step. Reference the skill's `checkDuplicateMember()` function for the recommended fuzzy matching algorithm.
+```
+
+This ensures consistent patterns across the NABIP AMS codebase and helps developers leverage established best practices from the skills library.
