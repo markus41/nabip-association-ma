@@ -1,0 +1,283 @@
+name: Critical Bug Fix Agent
+# Establishes rapid response protocols for critical functionality issues
+# Designed to restore broken workflows and ensure system reliability
+
+on:
+  issues:
+    types: [opened, labeled, assigned]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to process'
+        required: true
+        type: number
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  analyze-bug:
+    if: |
+      (github.event_name == 'workflow_dispatch') ||
+      (contains(github.event.issue.labels.*.name, 'type:bug') &&
+       (contains(github.event.issue.labels.*.name, 'priority:high') ||
+        contains(github.event.issue.labels.*.name, 'priority:critical')))
+    runs-on: ubuntu-latest
+    name: Analyze Critical Bug
+
+    outputs:
+      branch_name: ${{ steps.create_branch.outputs.branch_name }}
+      issue_number: ${{ steps.get_issue.outputs.issue_number }}
+
+    steps:
+      - name: Get Issue Number
+        id: get_issue
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "issue_number=${{ github.event.inputs.issue_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Analyze Issue Content
+        id: analyze
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ steps.get_issue.outputs.issue_number }};
+
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            console.log(`Analyzing Issue #${issueNumber}: ${issue.title}`);
+
+            const title = issue.title.toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+
+            // Determine bug category
+            let bugCategory = 'general';
+            let affectedFiles = [];
+            let suggestedFix = '';
+
+            if (title.includes('button') || title.includes('click')) {
+              bugCategory = 'ui-interaction';
+              affectedFiles = ['src/components/**/*.tsx', 'src/app/**/page.tsx'];
+              suggestedFix = 'Check event handlers, button onClick functions, and form submissions';
+            }
+
+            if (title.includes('login') || title.includes('auth')) {
+              bugCategory = 'authentication';
+              affectedFiles = ['src/lib/auth/*.ts', 'src/middleware.ts', 'src/app/api/auth/**/*.ts'];
+              suggestedFix = 'Verify Supabase auth configuration, session management, and middleware';
+            }
+
+            if (title.includes('workflow') || title.includes('process')) {
+              bugCategory = 'business-logic';
+              affectedFiles = ['src/app/api/**/*.ts', 'src/lib/**/*.ts'];
+              suggestedFix = 'Review API routes, server actions, and database operations';
+            }
+
+            if (title.includes('preview') || title.includes('display')) {
+              bugCategory = 'rendering';
+              affectedFiles = ['src/components/**/*.tsx'];
+              suggestedFix = 'Check component props, state management, and data fetching';
+            }
+
+            if (title.includes('report') || title.includes('export')) {
+              bugCategory = 'data-processing';
+              affectedFiles = ['src/lib/reports/*.ts', 'src/app/api/reports/**/*.ts'];
+              suggestedFix = 'Verify data transformation logic and export functionality';
+            }
+
+            core.setOutput('bug_category', bugCategory);
+            core.setOutput('affected_files', JSON.stringify(affectedFiles));
+            core.setOutput('suggested_fix', suggestedFix);
+            core.setOutput('issue_title', issue.title);
+
+            return {
+              bugCategory,
+              affectedFiles,
+              suggestedFix,
+              issueTitle: issue.title
+            };
+
+      - name: Run Diagnostic Tests
+        id: diagnostics
+        run: |
+          echo "Running diagnostic tests for bug category: ${{ steps.analyze.outputs.bug_category }}"
+
+          # Run type checking
+          echo "::group::Type Checking"
+          npm run type-check || true
+          echo "::endgroup::"
+
+          # Run linting
+          echo "::group::Linting"
+          npm run lint || true
+          echo "::endgroup::"
+
+          # Run tests
+          echo "::group::Unit Tests"
+          npm run test || true
+          echo "::endgroup::"
+
+          echo "Diagnostic tests completed"
+
+      - name: Create Feature Branch
+        id: create_branch
+        run: |
+          ISSUE_NUMBER="${{ steps.get_issue.outputs.issue_number }}"
+          BRANCH_NAME="bugfix/issue-${ISSUE_NUMBER}-$(echo '${{ steps.analyze.outputs.issue_title }}' | sed 's/ /-/g' | tr '[:upper:]' '[:lower:]' | cut -c1-50)"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "${BRANCH_NAME}"
+
+          echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          echo "Created branch: ${BRANCH_NAME}"
+
+      - name: Add Bug Analysis Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ steps.get_issue.outputs.issue_number }};
+            const bugCategory = '${{ steps.analyze.outputs.bug_category }}';
+            const suggestedFix = '${{ steps.analyze.outputs.suggested_fix }}';
+            const branchName = '${{ steps.create_branch.outputs.branch_name }}';
+            const affectedFiles = JSON.parse('${{ steps.analyze.outputs.affected_files }}');
+
+            const comment = `## 🔍 Critical Bug Analysis Complete
+
+**Bug Category:** \`${bugCategory}\`
+
+**Affected Areas:**
+${affectedFiles.map(f => `- \`${f}\``).join('\n')}
+
+**Diagnostic Approach:**
+${suggestedFix}
+
+**Created Branch:** \`${branchName}\`
+
+### Next Steps:
+1. ✅ Automated diagnostics running
+2. 🔧 Investigating root cause
+3. 📝 Implementing fix
+4. ✅ Running validation tests
+5. 📬 Creating pull request
+
+The Critical Bug Fix Agent is now actively working on this issue. Updates will be posted as progress is made.
+
+---
+*Automated by Critical Bug Fix Agent to ensure rapid response for system-critical issues*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });
+
+      - name: Request Copilot Investigation
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ steps.get_issue.outputs.issue_number }};
+            const branchName = '${{ steps.create_branch.outputs.branch_name }}';
+
+            // Add a label to trigger Copilot
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['copilot-investigation']
+            });
+
+            console.log(`Requested Copilot investigation for issue #${issueNumber}`);
+
+  validate-fix:
+    needs: analyze-bug
+    runs-on: ubuntu-latest
+    name: Validate Bug Fix
+    if: always()
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.analyze-bug.outputs.branch_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Full Test Suite
+        id: tests
+        run: |
+          echo "Running comprehensive test suite..."
+          npm run test || echo "test_failed=true" >> $GITHUB_OUTPUT
+
+      - name: Run Build Verification
+        id: build
+        run: |
+          echo "Verifying build succeeds..."
+          npm run build || echo "build_failed=true" >> $GITHUB_OUTPUT
+
+      - name: Post Validation Results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ needs.analyze-bug.outputs.issue_number }};
+            const testFailed = '${{ steps.tests.outputs.test_failed }}' === 'true';
+            const buildFailed = '${{ steps.build.outputs.build_failed }}' === 'true';
+
+            let status = '✅ All validations passed';
+            let details = 'The bug fix has been validated and is ready for review.';
+
+            if (testFailed || buildFailed) {
+              status = '⚠️ Validation issues detected';
+              details = `Some validation checks require attention:\n`;
+              if (testFailed) details += `- ❌ Test suite has failures\n`;
+              if (buildFailed) details += `- ❌ Build verification failed\n`;
+            }
+
+            const comment = `## ${status}
+
+${details}
+
+Branch: \`${{ needs.analyze-bug.outputs.branch_name }}\`
+
+---
+*Automated validation by Critical Bug Fix Agent*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });

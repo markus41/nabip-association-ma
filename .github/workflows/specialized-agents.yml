@@ -1,0 +1,499 @@
+name: Specialized Development Agents
+# Consolidated workflow for all specialized development agents
+# Establishes focused expertise areas for efficient feature delivery
+
+on:
+  issues:
+    types: [opened, labeled, assigned]
+  workflow_dispatch:
+    inputs:
+      agent_type:
+        description: 'Agent type to run'
+        required: true
+        type: choice
+        options:
+          - rbac-implementation
+          - dashboard-analytics
+          - member-management
+          - navigation-search
+          - document-management
+          - chapter-hierarchy
+          - content-library
+      issue_number:
+        description: 'Issue number'
+        required: true
+        type: number
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  determine-agent:
+    runs-on: ubuntu-latest
+    name: Determine Active Agent
+    outputs:
+      agent_type: ${{ steps.detect.outputs.agent_type }}
+      should_run: ${{ steps.detect.outputs.should_run }}
+      issue_number: ${{ steps.detect.outputs.issue_number }}
+
+    steps:
+      - name: Detect Agent Type
+        id: detect
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let agentType = null;
+            let issueNumber = null;
+            let shouldRun = 'false';
+
+            if (context.eventName === 'workflow_dispatch') {
+              agentType = '${{ github.event.inputs.agent_type }}';
+              issueNumber = ${{ github.event.inputs.issue_number }};
+              shouldRun = 'true';
+            } else if (context.payload.issue) {
+              issueNumber = context.payload.issue.number;
+              const labels = context.payload.issue.labels.map(l => l.name);
+
+              // Detect agent from labels
+              for (const label of labels) {
+                if (label.startsWith('agent:')) {
+                  agentType = label.replace('agent:', '');
+                  shouldRun = 'true';
+                  break;
+                }
+              }
+            }
+
+            core.setOutput('agent_type', agentType || 'none');
+            core.setOutput('issue_number', issueNumber || 0);
+            core.setOutput('should_run', shouldRun);
+
+            console.log(`Agent: ${agentType}, Issue: ${issueNumber}, Should Run: ${shouldRun}`);
+
+  rbac-agent:
+    needs: determine-agent
+    if: needs.determine-agent.outputs.should_run == 'true' && needs.determine-agent.outputs.agent_type == 'rbac-implementation'
+    runs-on: ubuntu-latest
+    name: RBAC Implementation Agent
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Analyze RBAC Requirements
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ needs.determine-agent.outputs.issue_number }};
+
+            const comment = `## 🔐 RBAC Implementation Agent Activated
+
+This agent specializes in establishing secure, scalable role-based access control systems for multi-tenant environments.
+
+### Implementation Strategy
+
+**1. Database Schema Design**
+- Create \`roles\` table with hierarchical relationships
+- Create \`permissions\` table with granular access controls
+- Create \`user_roles\` junction table
+- Implement Row Level Security (RLS) policies
+
+**2. Middleware Layer**
+- Route protection middleware
+- Permission checking utilities
+- Role hierarchy resolution
+- Session-based permission caching
+
+**3. Security Features**
+- Audit logging for all permission changes
+- IP restriction support
+- GDPR compliance tools (data export, deletion)
+- 2FA integration points
+
+**4. Admin Interfaces**
+- Permission management UI
+- Role assignment workflows
+- Audit log viewer
+- Session management dashboard
+
+### Technical Approach
+- **Database:** Supabase PostgreSQL with RLS
+- **Auth:** Supabase Auth with custom claims
+- **Caching:** Redis for permission lookups
+- **Audit:** Structured logging to Supabase
+
+The agent will create a comprehensive RBAC implementation following security best practices and maintaining compliance with data protection regulations.
+
+---
+*RBAC Implementation Agent - Establishing secure access control for sustainable organizational growth*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });
+
+  dashboard-agent:
+    needs: determine-agent
+    if: needs.determine-agent.outputs.should_run == 'true' && needs.determine-agent.outputs.agent_type == 'dashboard-analytics'
+    runs-on: ubuntu-latest
+    name: Dashboard & Analytics Agent
+
+    steps:
+      - name: Analyze Dashboard Requirements
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ needs.determine-agent.outputs.issue_number }};
+
+            const comment = `## 📊 Dashboard & Analytics Agent Activated
+
+This agent specializes in creating interactive data visualizations that drive measurable business outcomes.
+
+### Implementation Strategy
+
+**1. Chart Library Setup**
+- Recharts for responsive, accessible charts
+- Custom NABIP brand color palette
+- Interactive tooltips with drill-down capabilities
+- Real-time data updates via WebSockets
+
+**2. Dashboard Architecture**
+- Drag-and-drop widget system
+- Customizable grid layouts (React Grid Layout)
+- Widget size options (small, medium, large, full-width)
+- User preference persistence in Supabase
+
+**3. Analytics Capabilities**
+- Period comparison (YoY, MoM, QoQ)
+- Cohort analysis
+- Predictive analytics with trend lines
+- Export functionality (PDF, Excel, CSV)
+
+**4. Performance Optimization**
+- Query result caching
+- Virtual scrolling for large datasets
+- Incremental data loading
+- Optimistic UI updates
+
+### Visualization Types
+- 📈 Horizontal bar charts with direct data labels
+- 📊 Area charts for trend analysis
+- 🥧 Donut charts for categorical breakdowns
+- 📉 Line charts for time-series data
+- 🗺️ Heat maps for engagement patterns
+- ⚡ Sparklines for quick insights
+
+The agent will implement a fully customizable dashboard system that streamlines data visibility across your organization.
+
+---
+*Dashboard & Analytics Agent - Transforming data into actionable insights for informed decision-making*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });
+
+  member-agent:
+    needs: determine-agent
+    if: needs.determine-agent.outputs.should_run == 'true' && needs.determine-agent.outputs.agent_type == 'member-management'
+    runs-on: ubuntu-latest
+    name: Member Management Agent
+
+    steps:
+      - name: Analyze Member Management Requirements
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ needs.determine-agent.outputs.issue_number }};
+
+            const comment = `## 👥 Member Management Agent Activated
+
+This agent specializes in building scalable member data operations that support organizational growth.
+
+### Implementation Strategy
+
+**1. Editable Grid System**
+- AG Grid or TanStack Table for high-performance rendering
+- Virtual scrolling for 10,000+ members
+- Inline editing with debounced auto-save
+- Column reordering, resizing, and pinning
+
+**2. Custom Fields Architecture**
+- Dynamic schema extension system
+- Type validation (text, number, date, select, multi-select)
+- Field-level permissions
+- Database indexing for custom fields
+
+**3. Bulk Operations**
+- CSV import with progress tracking
+- Background job processing
+- Validation and error reporting
+- Rollback capability for failed imports
+
+**4. Duplicate Detection**
+- Fuzzy matching algorithm (Levenshtein distance)
+- Smart merge suggestions
+- Manual merge interface
+- Deduplication history tracking
+
+**5. Advanced Features**
+- Saved filter presets
+- Multi-column sorting
+- Quick search with highlights
+- Table density options (compact, comfortable, spacious)
+
+The agent will deliver enterprise-grade member management capabilities optimized for administrative efficiency.
+
+---
+*Member Management Agent - Streamlining member data workflows for scalable operations*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });
+
+  navigation-agent:
+    needs: determine-agent
+    if: needs.determine-agent.outputs.should_run == 'true' && needs.determine-agent.outputs.agent_type == 'navigation-search'
+    runs-on: ubuntu-latest
+    name: Navigation & Search Agent
+
+    steps:
+      - name: Analyze Navigation Requirements
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ needs.determine-agent.outputs.issue_number }};
+
+            const comment = `## 🔍 Navigation & Search Enhancement Agent Activated
+
+This agent specializes in improving discoverability and user navigation for enhanced productivity.
+
+### Implementation Strategy
+
+**1. AI-Powered Search**
+- Elasticsearch integration for full-text search
+- Natural language query processing
+- Search suggestions based on popular queries
+- Recent search history
+
+**2. Command Palette (Cmd/Ctrl+K)**
+- Global keyboard shortcut
+- Fuzzy search for all actions
+- Recent items and commands
+- Keyboard navigation with arrow keys
+
+**3. Navigation Enhancements**
+- Breadcrumb navigation on all pages
+- Collapsible sidebar with nested menus
+- Notification bell with real-time updates
+- Quick access menu for frequent actions
+
+**4. User Experience**
+- Search result highlighting
+- Filter chips for refinement
+- Export search results
+- Saved searches with smart notifications
+
+**5. Accessibility**
+- ARIA labels for screen readers
+- Keyboard navigation indicators
+- Focus management
+- Skip links for main content
+
+The agent will implement a comprehensive navigation system that reduces friction and improves user efficiency.
+
+---
+*Navigation & Search Agent - Enhancing discoverability to streamline daily workflows*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });
+
+  document-agent:
+    needs: determine-agent
+    if: needs.determine-agent.outputs.should_run == 'true' && needs.determine-agent.outputs.agent_type == 'document-management'
+    runs-on: ubuntu-latest
+    name: Document Management Agent
+
+    steps:
+      - name: Analyze Document Requirements
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ needs.determine-agent.outputs.issue_number }};
+
+            const comment = `## 📄 Document Management Agent Activated
+
+This agent specializes in building hierarchical document distribution systems with enterprise-grade features.
+
+### Implementation Strategy
+
+**1. Hierarchical Upload System**
+- Multi-level targeting (National → State → Chapter)
+- Drag-and-drop file upload
+- Bulk upload support
+- Progress tracking
+
+**2. OCR Integration**
+- AWS Textract or Google Vision API
+- PDF and image processing
+- Text extraction and indexing
+- Searchable document content
+
+**3. Approval Workflows**
+- Multi-stage approval pipeline
+- Email notifications at each stage
+- Comments and revision requests
+- Approval history tracking
+
+**4. Storage & CDN**
+- Supabase Storage integration
+- Document encryption at rest
+- CDN delivery for fast access
+- Access control per document
+
+**5. Document Library**
+- Category-based organization
+- Advanced search with filters
+- Version control
+- View/download tracking
+
+The agent will deliver a comprehensive document management system that improves organizational communication.
+
+---
+*Document Management Agent - Establishing scalable document workflows for improved collaboration*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });
+
+  chapter-agent:
+    needs: determine-agent
+    if: needs.determine-agent.outputs.should_run == 'true' && needs.determine-agent.outputs.agent_type == 'chapter-hierarchy'
+    runs-on: ubuntu-latest
+    name: Chapter Hierarchy Agent
+
+    steps:
+      - name: Analyze Chapter Requirements
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ needs.determine-agent.outputs.issue_number }};
+
+            const comment = `## 🏢 Chapter Hierarchy Agent Activated
+
+This agent specializes in managing organizational structures with complex hierarchical relationships.
+
+### Implementation Strategy
+
+**1. Hierarchy Visualization**
+- Interactive tree component
+- Collapsible nodes
+- Visual indicators for performance
+- Drag-and-drop reorganization
+
+**2. Chapter Operations**
+- Dedicated creation/edit forms
+- Bulk operations (activate, deactivate, update)
+- Chapter comparison tools
+- Performance benchmarking
+
+**3. Data Management**
+- Recursive data structures
+- Efficient hierarchy queries (CTEs)
+- Permission cascade logic
+- Caching for large trees
+
+**4. Analytics**
+- Chapter performance metrics
+- Comparative analysis
+- Sparkline visualizations
+- Export capabilities
+
+The agent will build comprehensive chapter management tools that support multi-level organizational structures.
+
+---
+*Chapter Hierarchy Agent - Streamlining organizational structure management for scalable administration*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });
+
+  content-agent:
+    needs: determine-agent
+    if: needs.determine-agent.outputs.should_run == 'true' && needs.determine-agent.outputs.agent_type == 'content-library'
+    runs-on: ubuntu-latest
+    name: Content Library Agent
+
+    steps:
+      - name: Analyze Content Requirements
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ needs.determine-agent.outputs.issue_number }};
+
+            const comment = `## 📚 Content Library Agent Activated
+
+This agent specializes in building knowledge management and content distribution capabilities.
+
+### Implementation Strategy
+
+**1. Blog/News System**
+- Rich text editor (Tiptap or Lexical)
+- Category management
+- Tagging system
+- Scheduled publishing
+
+**2. Knowledge Base**
+- Hierarchical article organization
+- Full-text search
+- Related articles
+- View tracking
+
+**3. FAQ Management**
+- Category-based organization
+- Search functionality
+- Helpful/Not Helpful voting
+- Analytics on common questions
+
+**4. Media Libraries**
+- Video content library with CDN
+- Podcast player integration
+- Audio transcription
+- Playlist management
+
+**5. Search & Discovery**
+- Cross-content search
+- Filter by type and category
+- Recommended content
+- Popular content tracking
+
+The agent will deliver a comprehensive content management system that enhances knowledge sharing across your organization.
+
+---
+*Content Library Agent - Building sustainable knowledge management practices for organizational learning*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });

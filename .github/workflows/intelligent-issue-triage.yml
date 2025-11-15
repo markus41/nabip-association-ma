@@ -1,0 +1,264 @@
+name: Intelligent Issue Triage & Assignment
+# Establishes automated issue classification and routing to specialized agents
+# Ensures every issue receives appropriate attention based on priority and type
+
+on:
+  issues:
+    types: [opened, labeled, edited, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    name: Analyze and Route Issues
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Analyze Issue Content
+        id: analyze
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const issueNumber = issue.number;
+            const issueTitle = issue.title.toLowerCase();
+            const issueBody = (issue.body || '').toLowerCase();
+            const currentLabels = issue.labels.map(l => l.name);
+
+            console.log(`Analyzing Issue #${issueNumber}: ${issue.title}`);
+
+            // Determine issue category and appropriate agent
+            let agentType = null;
+            let priority = 'medium';
+            let area = [];
+            let additionalLabels = [];
+
+            // Critical bug detection
+            if (issueTitle.includes('fix') || issueTitle.includes('broken') ||
+                issueTitle.includes('not working') || issueTitle.includes('error')) {
+              additionalLabels.push('type:bug');
+              agentType = 'critical-bug-fix';
+
+              if (issueTitle.includes('critical') || issueTitle.includes('login') ||
+                  issueTitle.includes('button') || issueTitle.includes('workflow')) {
+                priority = 'high';
+              }
+            }
+
+            // Feature classification
+            if (issueTitle.includes('implement') || issueTitle.includes('add') ||
+                issueTitle.includes('create') || issueTitle.includes('build') ||
+                issueBody.includes('feature category')) {
+              additionalLabels.push('type:feature');
+            }
+
+            // RBAC & Security
+            if (issueTitle.includes('rbac') || issueTitle.includes('permission') ||
+                issueTitle.includes('role') || issueTitle.includes('auth') ||
+                issueTitle.includes('security') || issueTitle.includes('gdpr')) {
+              agentType = 'rbac-implementation';
+              area.push('area:security');
+              additionalLabels.push('type:feature');
+            }
+
+            // Dashboard & Analytics
+            if (issueTitle.includes('dashboard') || issueTitle.includes('chart') ||
+                issueTitle.includes('analytics') || issueTitle.includes('metric') ||
+                issueTitle.includes('visualization') || issueTitle.includes('widget')) {
+              agentType = 'dashboard-analytics';
+              area.push('area:ui');
+              additionalLabels.push('type:feature');
+            }
+
+            // Member Management
+            if (issueTitle.includes('member') && (issueTitle.includes('management') ||
+                issueTitle.includes('grid') || issueTitle.includes('editable') ||
+                issueTitle.includes('custom field') || issueTitle.includes('bulk'))) {
+              agentType = 'member-management';
+              area.push('area:data');
+              additionalLabels.push('type:feature');
+            }
+
+            // Navigation & Search
+            if (issueTitle.includes('search') || issueTitle.includes('navigation') ||
+                issueTitle.includes('command palette') || issueTitle.includes('breadcrumb') ||
+                issueTitle.includes('notification')) {
+              agentType = 'navigation-search';
+              area.push('area:ui');
+              additionalLabels.push('type:feature');
+            }
+
+            // Document Management
+            if (issueTitle.includes('document') || issueTitle.includes('upload') ||
+                issueTitle.includes('ocr') || issueTitle.includes('approval') ||
+                issueTitle.includes('library')) {
+              agentType = 'document-management';
+              area.push('area:storage');
+              additionalLabels.push('type:feature');
+            }
+
+            // Chapter Management
+            if (issueTitle.includes('chapter') && (issueTitle.includes('hierarchy') ||
+                issueTitle.includes('comparison') || issueTitle.includes('bulk'))) {
+              agentType = 'chapter-hierarchy';
+              area.push('area:data');
+              additionalLabels.push('type:feature');
+            }
+
+            // Content Library
+            if (issueTitle.includes('blog') || issueTitle.includes('faq') ||
+                issueTitle.includes('knowledge base') || issueTitle.includes('podcast') ||
+                issueTitle.includes('video') || issueTitle.includes('content')) {
+              agentType = 'content-library';
+              area.push('area:cms');
+              additionalLabels.push('type:feature');
+            }
+
+            // Performance optimization
+            if (issueTitle.includes('performance') || issueTitle.includes('optimize') ||
+                issueTitle.includes('slow') || issueTitle.includes('speed')) {
+              area.push('area:performance');
+              additionalLabels.push('enhancement');
+            }
+
+            // CI/CD related
+            if (issueTitle.includes('deploy') || issueTitle.includes('ci') ||
+                issueTitle.includes('workflow') || issueTitle.includes('pipeline')) {
+              area.push('area:ci-cd');
+            }
+
+            // Set priority labels
+            if (currentLabels.includes('priority:high') || priority === 'high') {
+              additionalLabels.push('priority:high');
+            } else if (!currentLabels.some(l => l.startsWith('priority:'))) {
+              additionalLabels.push('priority:medium');
+            }
+
+            // Combine all labels
+            const labelsToAdd = [...new Set([...additionalLabels, ...area])];
+
+            // Store results for next steps
+            core.setOutput('agent_type', agentType || 'feature-development');
+            core.setOutput('priority', priority);
+            core.setOutput('labels', JSON.stringify(labelsToAdd));
+            core.setOutput('issue_number', issueNumber);
+
+            return {
+              agentType: agentType || 'feature-development',
+              priority,
+              labels: labelsToAdd,
+              issueNumber
+            };
+
+      - name: Apply Labels
+        if: steps.analyze.outputs.labels != '[]'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = JSON.parse('${{ steps.analyze.outputs.labels }}');
+            const issueNumber = ${{ steps.analyze.outputs.issue_number }};
+
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: labels
+              });
+              console.log(`Added labels to issue #${issueNumber}: ${labels.join(', ')}`);
+            }
+
+      - name: Assign to Appropriate Agent
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const agentType = '${{ steps.analyze.outputs.agent_type }}';
+            const issueNumber = ${{ steps.analyze.outputs.issue_number }};
+            const priority = '${{ steps.analyze.outputs.priority }}';
+
+            // Map agent types to assignees (using Copilot for automated handling)
+            const agentAssignees = {
+              'critical-bug-fix': ['Copilot'],
+              'rbac-implementation': ['Copilot'],
+              'dashboard-analytics': ['Copilot'],
+              'member-management': ['Copilot'],
+              'navigation-search': ['Copilot'],
+              'document-management': ['Copilot'],
+              'chapter-hierarchy': ['Copilot'],
+              'content-library': ['Copilot'],
+              'feature-development': ['Copilot']
+            };
+
+            const assignees = agentAssignees[agentType] || agentAssignees['feature-development'];
+
+            // Add assignees
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              assignees: assignees
+            });
+
+            console.log(`Assigned issue #${issueNumber} to ${assignees.join(', ')} (Agent: ${agentType})`);
+
+      - name: Add Triage Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const agentType = '${{ steps.analyze.outputs.agent_type }}';
+            const priority = '${{ steps.analyze.outputs.priority }}';
+            const issueNumber = ${{ steps.analyze.outputs.issue_number }};
+
+            const agentDescriptions = {
+              'critical-bug-fix': '🔥 **Critical Bug Fix Agent** - Focused on restoring broken functionality with high priority',
+              'rbac-implementation': '🔐 **RBAC Implementation Agent** - Specialized in role-based access control and security',
+              'dashboard-analytics': '📊 **Dashboard & Analytics Agent** - Expertise in data visualization and interactive dashboards',
+              'member-management': '👥 **Member Management Agent** - Optimized for member data operations and workflows',
+              'navigation-search': '🔍 **Navigation & Search Agent** - Enhances discoverability and user navigation',
+              'document-management': '📄 **Document Management Agent** - Handles document workflows and storage',
+              'chapter-hierarchy': '🏢 **Chapter Hierarchy Agent** - Manages organizational structure and relationships',
+              'content-library': '📚 **Content Library Agent** - Builds knowledge management capabilities',
+              'feature-development': '⚙️ **Feature Development Orchestrator** - General feature implementation'
+            };
+
+            const priorityEmoji = priority === 'high' ? '🔴' : priority === 'medium' ? '🟡' : '🟢';
+
+            const comment = `## 🤖 Automated Triage Complete
+
+${agentDescriptions[agentType]}
+
+**Priority:** ${priorityEmoji} ${priority.toUpperCase()}
+
+This issue has been automatically analyzed and routed to the appropriate specialized agent for handling. The agent will:
+1. Review the requirements and technical specifications
+2. Create an implementation plan
+3. Develop and test the solution
+4. Submit a pull request for review
+
+For urgent issues, please add the \`priority:critical\` label to expedite processing.
+
+---
+*This issue was triaged by the Intelligent Issue Management System to streamline development workflows and improve response times.*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });
+
+      - name: Create Tracking Project
+        if: steps.analyze.outputs.priority == 'high'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ steps.analyze.outputs.issue_number }};
+            console.log(`High-priority issue #${issueNumber} detected - tracking project can be created manually if needed`);

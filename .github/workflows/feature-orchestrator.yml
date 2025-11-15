@@ -1,0 +1,306 @@
+name: Feature Development Orchestrator
+# Coordinates multi-agent feature development workflows
+# Establishes scalable practices for sustainable project growth
+
+on:
+  issues:
+    types: [opened, labeled, assigned]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Feature issue number'
+        required: true
+        type: number
+
+permissions:
+  issues: write
+  contents: write
+  pull-requests: write
+  projects: write
+
+jobs:
+  orchestrate-feature:
+    if: |
+      (github.event_name == 'workflow_dispatch') ||
+      (contains(github.event.issue.labels.*.name, 'type:feature') &&
+       github.event.issue.assignees[0].login == 'Copilot')
+    runs-on: ubuntu-latest
+    name: Orchestrate Feature Development
+
+    steps:
+      - name: Get Issue Details
+        id: get_issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let issueNumber;
+            if (context.eventName === 'workflow_dispatch') {
+              issueNumber = ${{ github.event.inputs.issue_number }};
+            } else {
+              issueNumber = context.payload.issue.number;
+            }
+
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber
+            });
+
+            core.setOutput('issue_number', issueNumber);
+            core.setOutput('issue_title', issue.title);
+            core.setOutput('issue_body', issue.body || '');
+
+            return { issueNumber, title: issue.title, body: issue.body };
+
+      - name: Analyze Feature Scope
+        id: analyze
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ steps.get_issue.outputs.issue_number }};
+            const title = `${{ steps.get_issue.outputs.issue_title }}`.toLowerCase();
+            const body = `${{ steps.get_issue.outputs.issue_body }}`.toLowerCase();
+
+            // Determine feature complexity
+            let complexity = 'medium';
+            let estimatedSubTasks = 5;
+            let requiredAgents = [];
+
+            // Complexity indicators
+            if (body.includes('epic') || body.includes('multiple') || body.includes('comprehensive')) {
+              complexity = 'high';
+              estimatedSubTasks = 15;
+            } else if (title.includes('simple') || title.includes('minor')) {
+              complexity = 'low';
+              estimatedSubTasks = 3;
+            }
+
+            // Identify required specialized agents
+            if (title.includes('dashboard') || title.includes('chart') || title.includes('analytics')) {
+              requiredAgents.push('dashboard-analytics');
+            }
+
+            if (title.includes('member') || title.includes('user management')) {
+              requiredAgents.push('member-management');
+            }
+
+            if (title.includes('search') || title.includes('navigation')) {
+              requiredAgents.push('navigation-search');
+            }
+
+            if (title.includes('document') || title.includes('upload')) {
+              requiredAgents.push('document-management');
+            }
+
+            if (title.includes('chapter') || title.includes('hierarchy')) {
+              requiredAgents.push('chapter-hierarchy');
+            }
+
+            if (title.includes('rbac') || title.includes('permission') || title.includes('role')) {
+              requiredAgents.push('rbac-implementation');
+            }
+
+            if (title.includes('content') || title.includes('cms')) {
+              requiredAgents.push('content-library');
+            }
+
+            // Technical requirements analysis
+            const technicalAreas = {
+              database: body.includes('database') || body.includes('schema') || body.includes('migration'),
+              api: body.includes('api') || body.includes('endpoint') || body.includes('server action'),
+              ui: body.includes('ui') || body.includes('component') || body.includes('interface'),
+              auth: body.includes('auth') || body.includes('permission') || body.includes('security'),
+              performance: body.includes('performance') || body.includes('optimization') || body.includes('cache')
+            };
+
+            core.setOutput('complexity', complexity);
+            core.setOutput('estimated_subtasks', estimatedSubTasks);
+            core.setOutput('required_agents', JSON.stringify(requiredAgents));
+            core.setOutput('technical_areas', JSON.stringify(technicalAreas));
+
+            return {
+              complexity,
+              estimatedSubTasks,
+              requiredAgents,
+              technicalAreas
+            };
+
+      - name: Create Implementation Plan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ steps.get_issue.outputs.issue_number }};
+            const complexity = '${{ steps.analyze.outputs.complexity }}';
+            const estimatedSubTasks = ${{ steps.analyze.outputs.estimated_subtasks }};
+            const requiredAgents = JSON.parse('${{ steps.analyze.outputs.required_agents }}');
+            const technicalAreas = JSON.parse('${{ steps.analyze.outputs.technical_areas }}');
+
+            // Build implementation plan
+            let planSections = [];
+
+            if (technicalAreas.database) {
+              planSections.push(`
+### 🗄️ Database Layer
+- Design schema and relationships
+- Create migration files
+- Implement Row Level Security (RLS) policies
+- Add database indexes for performance`);
+            }
+
+            if (technicalAreas.api) {
+              planSections.push(`
+### 🔌 API Layer
+- Design API routes / Server Actions
+- Implement request validation
+- Add error handling and logging
+- Write API documentation`);
+            }
+
+            if (technicalAreas.ui) {
+              planSections.push(`
+### 🎨 UI Components
+- Design component structure
+- Implement responsive layouts
+- Add accessibility features (ARIA labels, keyboard navigation)
+- Apply NABIP brand styling`);
+            }
+
+            if (technicalAreas.auth) {
+              planSections.push(`
+### 🔐 Security & Authorization
+- Implement permission checks
+- Add role-based access control
+- Audit logging
+- Security testing`);
+            }
+
+            if (technicalAreas.performance) {
+              planSections.push(`
+### ⚡ Performance Optimization
+- Implement caching strategies
+- Add data pagination
+- Optimize database queries
+- Measure Core Web Vitals`);
+            }
+
+            const complexityEmoji = {
+              'low': '🟢',
+              'medium': '🟡',
+              'high': '🔴'
+            };
+
+            const agentDescriptions = requiredAgents.map(agent => {
+              const descriptions = {
+                'dashboard-analytics': '📊 Dashboard & Analytics Agent',
+                'member-management': '👥 Member Management Agent',
+                'navigation-search': '🔍 Navigation & Search Agent',
+                'document-management': '📄 Document Management Agent',
+                'chapter-hierarchy': '🏢 Chapter Hierarchy Agent',
+                'rbac-implementation': '🔐 RBAC Implementation Agent',
+                'content-library': '📚 Content Library Agent'
+              };
+              return descriptions[agent] || agent;
+            });
+
+            const comment = `## 🎯 Feature Development Plan
+
+**Complexity:** ${complexityEmoji[complexity]} ${complexity.toUpperCase()}
+**Estimated Sub-Tasks:** ~${estimatedSubTasks}
+**Required Specialized Agents:** ${requiredAgents.length > 0 ? '\n' + agentDescriptions.map(a => `- ${a}`).join('\n') : 'General Development'}
+
+---
+
+## 📋 Implementation Roadmap
+
+${planSections.join('\n\n---\n\n')}
+
+---
+
+## ✅ Quality Gates
+
+Before merging, this feature must meet:
+- ✅ All automated tests passing
+- ✅ Code review approved
+- ✅ TypeScript type safety verified
+- ✅ Accessibility standards met (WCAG 2.1 AA)
+- ✅ Performance benchmarks achieved
+- ✅ Security scan completed
+- ✅ Documentation updated
+
+---
+
+### 🚀 Next Steps
+
+The Feature Development Orchestrator will coordinate the specialized agents to implement this feature following Brookside BI's sustainable development practices. Each agent will work autonomously on their respective areas while maintaining integration consistency.
+
+---
+*Orchestrated by Feature Development Orchestrator to streamline complex feature delivery across multi-agent workflows*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: comment
+            });
+
+      - name: Add Milestone
+        if: steps.analyze.outputs.complexity == 'high'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = ${{ steps.get_issue.outputs.issue_number }};
+
+            // Get or create milestone
+            try {
+              const { data: milestones } = await github.rest.issues.listMilestones({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open'
+              });
+
+              let milestone = milestones.find(m => m.title.includes('Feature Development'));
+
+              if (!milestone) {
+                const { data: newMilestone } = await github.rest.issues.createMilestone({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: 'Feature Development - Q4 2025',
+                  description: 'Major feature implementations tracked by automated agents'
+                });
+                milestone = newMilestone;
+              }
+
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                milestone: milestone.number
+              });
+
+              console.log(`Added issue #${issueNumber} to milestone: ${milestone.title}`);
+            } catch (error) {
+              console.log('Could not set milestone:', error.message);
+            }
+
+      - name: Trigger Specialized Agents
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const requiredAgents = JSON.parse('${{ steps.analyze.outputs.required_agents }}');
+            const issueNumber = ${{ steps.get_issue.outputs.issue_number }};
+
+            // Add labels to trigger specialized agent workflows
+            const agentLabels = requiredAgents.map(agent => `agent:${agent}`);
+
+            if (agentLabels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: agentLabels
+              });
+
+              console.log(`Triggered specialized agents for issue #${issueNumber}: ${requiredAgents.join(', ')}`);
+            }
