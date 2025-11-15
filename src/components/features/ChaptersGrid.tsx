@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Plus, Trash, Check, X, PencilSimple, CaretRight, CaretDown, Users, CalendarDots, ChartBar, EnvelopeSimple } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import type { Chapter, ChapterType } from '@/lib/types'
@@ -475,24 +476,91 @@ export function ChaptersGrid({ chapters: initialChapters, loading }: ChaptersGri
                           </>
                         ) : (
                           <>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleEdit(chapter.id)}
-                              disabled={editingId !== null}
-                            >
-                              <PencilSimple size={16} weight="bold" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 hover:bg-destructive/10"
-                              onClick={() => handleDelete(chapter.id)}
-                              disabled={editingId !== null}
-                            >
-                              <Trash size={16} className="text-destructive" weight="bold" />
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleViewMembers(chapter)}
+                                  disabled={editingId !== null}
+                                >
+                                  <Users size={16} weight="bold" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>View Members</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleViewEvents(chapter)}
+                                  disabled={editingId !== null}
+                                >
+                                  <CalendarDots size={16} weight="bold" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>View Events</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleViewFinancials(chapter)}
+                                  disabled={editingId !== null}
+                                >
+                                  <ChartBar size={16} weight="bold" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>View Financials</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleMessageLeaders(chapter)}
+                                  disabled={editingId !== null}
+                                >
+                                  <EnvelopeSimple size={16} weight="bold" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Message Leaders</TooltipContent>
+                            </Tooltip>
+                            <div className="w-px h-6 bg-border mx-1" />
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleEdit(chapter.id)}
+                                  disabled={editingId !== null}
+                                >
+                                  <PencilSimple size={16} weight="bold" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit Chapter</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 hover:bg-destructive/10"
+                                  onClick={() => handleDelete(chapter.id)}
+                                  disabled={editingId !== null}
+                                >
+                                  <Trash size={16} className="text-destructive" weight="bold" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete Chapter</TooltipContent>
+                            </Tooltip>
                           </>
                         )}
                       </div>
