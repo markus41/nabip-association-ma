@@ -180,7 +180,7 @@ function App() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
               <Buildings size={24} weight="duotone" className="text-primary-foreground" />
@@ -210,7 +210,7 @@ function App() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto flex min-h-[calc(100vh-73px)]">
+      <div className="flex min-h-[calc(100vh-73px)]">
         <aside className="hidden lg:block w-64 border-r h-[calc(100vh-73px)] sticky top-[73px] overflow-y-auto">
           <nav className="p-4 space-y-1">
             {navItems.map((item) => {
