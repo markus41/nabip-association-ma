@@ -329,6 +329,18 @@ function App() {
           {currentView === 'reports' && (
             <ReportsView reports={reports || []} loading={isLoading} />
           )}
+          {currentView === 'admin' && (
+            <NationalAdminView
+              users={users || []}
+              auditLogs={auditLogs || []}
+              systemConfig={systemConfig || []}
+              integrations={integrations || []}
+              members={members || []}
+              chapters={chapters || []}
+              events={events || []}
+              loading={isLoading}
+            />
+          )}
           {currentView === 'portal' && (
             <MemberPortal memberId="current-member-id" />
           )}
