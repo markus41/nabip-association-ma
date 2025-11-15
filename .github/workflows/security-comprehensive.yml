@@ -1,0 +1,380 @@
+name: Comprehensive Security Validation
+
+# Establish robust security controls to protect sensitive data across your business environment
+# This workflow consolidates dependency auditing, secret scanning, and security best practices
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  schedule:
+    # Daily comprehensive scan at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+  issues: write
+
+jobs:
+  security-validation:
+    name: Security Validation & Compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ============================================================================
+      # DEPENDENCY SECURITY AUDIT
+      # ============================================================================
+
+      - name: Run dependency vulnerability audit
+        id: npm_audit
+        continue-on-error: true
+        run: |
+          echo "🔍 Scanning dependencies for known vulnerabilities..."
+          npm audit --json > npm-audit-full.json || true
+          npm audit --production --json > npm-audit-prod.json || true
+          npm audit
+
+      - name: Analyze audit results
+        id: audit_analysis
+        run: |
+          if [ -f npm-audit-full.json ]; then
+            VULNS=$(jq '.metadata.vulnerabilities | to_entries | map(.value) | add' npm-audit-full.json)
+            echo "total_vulnerabilities=$VULNS" >> $GITHUB_OUTPUT
+
+            CRITICAL=$(jq '.metadata.vulnerabilities.critical // 0' npm-audit-full.json)
+            HIGH=$(jq '.metadata.vulnerabilities.high // 0' npm-audit-full.json)
+            echo "critical=$CRITICAL" >> $GITHUB_OUTPUT
+            echo "high=$HIGH" >> $GITHUB_OUTPUT
+
+            if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
+              echo "has_critical_vulns=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_critical_vulns=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "total_vulnerabilities=0" >> $GITHUB_OUTPUT
+            echo "has_critical_vulns=false" >> $GITHUB_OUTPUT
+          fi
+
+      # ============================================================================
+      # SECRET SCANNING
+      # ============================================================================
+
+      - name: Run TruffleHog secret detection
+        id: trufflehog
+        uses: trufflesecurity/trufflehog@main
+        continue-on-error: true
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --json --only-verified
+
+      - name: Scan for common secret patterns
+        id: secret_patterns
+        run: |
+          echo "🔍 Scanning for common credential patterns..."
+          FINDINGS=0
+
+          # AWS Access Keys
+          if grep -r "AKIA[0-9A-Z]{16}" . --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist 2>/dev/null; then
+            echo "⚠️ Potential AWS access keys detected"
+            FINDINGS=$((FINDINGS+1))
+          fi
+
+          # GitHub Personal Access Tokens
+          if grep -r "ghp_[0-9a-zA-Z]{36}" . --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist 2>/dev/null; then
+            echo "⚠️ Potential GitHub tokens detected"
+            FINDINGS=$((FINDINGS+1))
+          fi
+
+          # OpenAI API Keys
+          if grep -r "sk-[0-9a-zA-Z]{48}" . --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist 2>/dev/null; then
+            echo "⚠️ Potential OpenAI API keys detected"
+            FINDINGS=$((FINDINGS+1))
+          fi
+
+          # Supabase Keys (anon and service)
+          if grep -r "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" . --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist 2>/dev/null; then
+            echo "⚠️ Potential Supabase keys detected"
+            FINDINGS=$((FINDINGS+1))
+          fi
+
+          if [ $FINDINGS -eq 0 ]; then
+            echo "✅ No common secret patterns detected"
+          fi
+
+          echo "secret_findings=$FINDINGS" >> $GITHUB_OUTPUT
+
+      # ============================================================================
+      # CREDENTIAL & SENSITIVE DATA DETECTION
+      # ============================================================================
+
+      - name: Check for hardcoded credentials
+        id: credential_check
+        run: |
+          echo "🔍 Scanning for hardcoded credentials in source code..."
+          ISSUES=0
+
+          # Hardcoded passwords
+          if grep -r "password\s*=\s*['\"][^'\"]*['\"]" . \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist 2>/dev/null; then
+            echo "⚠️ Potential hardcoded passwords found"
+            ISSUES=$((ISSUES+1))
+          fi
+
+          # Hardcoded API keys
+          if grep -r "api[_-]?key\s*=\s*['\"][^'\"]+['\"]" . \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist 2>/dev/null; then
+            echo "⚠️ Potential hardcoded API keys found"
+            ISSUES=$((ISSUES+1))
+          fi
+
+          # Database connection strings
+          if grep -r "postgres://\|mysql://\|mongodb://" . \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist 2>/dev/null; then
+            echo "⚠️ Potential database connection strings found"
+            ISSUES=$((ISSUES+1))
+          fi
+
+          if [ $ISSUES -eq 0 ]; then
+            echo "✅ No hardcoded credentials detected"
+          fi
+
+          echo "credential_issues=$ISSUES" >> $GITHUB_OUTPUT
+
+      # ============================================================================
+      # SECURITY BEST PRACTICES
+      # ============================================================================
+
+      - name: Validate security best practices
+        id: best_practices
+        run: |
+          echo "🔍 Validating security best practices..."
+          WARNINGS=0
+
+          # Check for eval() usage (code injection risk)
+          if grep -r "\beval\s*(" . \
+            --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist 2>/dev/null; then
+            echo "⚠️ eval() usage detected - potential code injection risk"
+            WARNINGS=$((WARNINGS+1))
+          fi
+
+          # Check for dangerouslySetInnerHTML (XSS risk)
+          if grep -r "dangerouslySetInnerHTML" . \
+            --include="*.tsx" --include="*.jsx" \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist 2>/dev/null; then
+            echo "⚠️ dangerouslySetInnerHTML usage detected - ensure proper sanitization"
+            WARNINGS=$((WARNINGS+1))
+          fi
+
+          # Verify .env files are gitignored
+          if ! grep -q "^\.env" .gitignore 2>/dev/null; then
+            echo "⚠️ .env files not in .gitignore"
+            WARNINGS=$((WARNINGS+1))
+          else
+            echo "✅ .env files properly gitignored"
+          fi
+
+          # Verify no .env files are committed
+          if git ls-files | grep -E "^\.env$|^\.env\.local$|^\.env\.production$" 2>/dev/null; then
+            echo "⚠️ .env files should not be committed to repository"
+            WARNINGS=$((WARNINGS+1))
+          fi
+
+          # Check for HTTP links in documentation
+          grep -r "http://" . --include="*.md" \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist > http-links.txt 2>/dev/null || echo "No HTTP links"
+
+          if [ -s http-links.txt ]; then
+            echo "⚠️ HTTP links found in documentation - consider upgrading to HTTPS"
+            echo "has_http_links=true" >> $GITHUB_OUTPUT
+            WARNINGS=$((WARNINGS+1))
+          else
+            echo "✅ All documentation links use HTTPS"
+            echo "has_http_links=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "best_practice_warnings=$WARNINGS" >> $GITHUB_OUTPUT
+
+      # ============================================================================
+      # SUPABASE SECURITY VALIDATION
+      # ============================================================================
+
+      - name: Validate Supabase security patterns
+        id: supabase_security
+        run: |
+          echo "🔍 Validating Supabase security implementation..."
+          ISSUES=0
+
+          # Check for proper RLS usage in queries
+          if grep -r "supabase\.from(" . \
+            --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist | \
+            grep -v "\.rls(" 2>/dev/null; then
+            echo "ℹ️ Database queries found - ensure RLS policies are properly configured"
+          fi
+
+          # Verify no service role keys in client code
+          if grep -r "service_role" . \
+            --include="*.ts" --include="*.tsx" \
+            --exclude="*.config.*" --exclude="supabase/*" \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=dist 2>/dev/null; then
+            echo "⚠️ Service role key reference in client code - use anon key instead"
+            ISSUES=$((ISSUES+1))
+          fi
+
+          echo "supabase_issues=$ISSUES" >> $GITHUB_OUTPUT
+
+      # ============================================================================
+      # REPORTING & ARTIFACTS
+      # ============================================================================
+
+      - name: Generate comprehensive security report
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Parse audit data
+            let auditData = { metadata: { vulnerabilities: {} } };
+            try {
+              auditData = JSON.parse(fs.readFileSync('npm-audit-full.json', 'utf8'));
+            } catch (e) {
+              console.log('No audit data available');
+            }
+
+            const vulns = auditData.metadata?.vulnerabilities || {};
+            const totalVulns = Object.values(vulns).reduce((a, b) => a + b, 0);
+            const hasCritical = '${{ steps.audit_analysis.outputs.has_critical_vulns }}' === 'true';
+            const secretFindings = parseInt('${{ steps.secret_patterns.outputs.secret_findings }}' || '0');
+            const credentialIssues = parseInt('${{ steps.credential_check.outputs.credential_issues }}' || '0');
+            const bestPracticeWarnings = parseInt('${{ steps.best_practices.outputs.best_practice_warnings }}' || '0');
+            const supabaseIssues = parseInt('${{ steps.supabase_security.outputs.supabase_issues }}' || '0');
+            const hasHttpLinks = '${{ steps.best_practices.outputs.has_http_links }}' === 'true';
+
+            let message = `## 🔒 Comprehensive Security Validation Report\n\n`;
+            message += `This security audit establishes controls to protect sensitive data across your business environment.\n\n`;
+
+            // Vulnerability Summary
+            message += `### 📦 Dependency Vulnerabilities\n\n`;
+            if (totalVulns > 0) {
+              message += `**Total Vulnerabilities:** ${totalVulns}\n\n`;
+              if (vulns.critical) message += `- 🔴 **Critical**: ${vulns.critical}\n`;
+              if (vulns.high) message += `- 🟠 **High**: ${vulns.high}\n`;
+              if (vulns.moderate) message += `- 🟡 **Moderate**: ${vulns.moderate}\n`;
+              if (vulns.low) message += `- 🔵 **Low**: ${vulns.low}\n\n`;
+
+              if (hasCritical) {
+                message += `⚠️ **Action Required:** Critical or high-severity vulnerabilities detected. Run \`npm audit fix\` to address.\n\n`;
+              }
+            } else {
+              message += `✅ **No known vulnerabilities detected** in dependencies.\n\n`;
+            }
+
+            // Security Scans Performed
+            message += `### 🔍 Security Scans Performed\n\n`;
+            message += `| Check | Status | Findings |\n`;
+            message += `|-------|--------|----------|\n`;
+            message += `| TruffleHog Secret Scan | ✅ Complete | Verified secrets only |\n`;
+            message += `| Common Secret Patterns | ${secretFindings > 0 ? '⚠️' : '✅'} | ${secretFindings} pattern(s) |\n`;
+            message += `| Hardcoded Credentials | ${credentialIssues > 0 ? '⚠️' : '✅'} | ${credentialIssues} issue(s) |\n`;
+            message += `| Security Best Practices | ${bestPracticeWarnings > 0 ? '⚠️' : '✅'} | ${bestPracticeWarnings} warning(s) |\n`;
+            message += `| Supabase Security | ${supabaseIssues > 0 ? '⚠️' : '✅'} | ${supabaseIssues} issue(s) |\n`;
+            message += `| HTTPS Links | ${hasHttpLinks ? '⚠️' : '✅'} | ${hasHttpLinks ? 'HTTP links found' : 'All HTTPS'} |\n\n`;
+
+            // Findings & Recommendations
+            const hasFindings = secretFindings > 0 || credentialIssues > 0 || bestPracticeWarnings > 0 || supabaseIssues > 0;
+
+            if (hasFindings) {
+              message += `### ⚠️ Findings & Recommendations\n\n`;
+
+              if (secretFindings > 0) {
+                message += `**Secret Patterns Detected:**\n`;
+                message += `- Remove any accidentally committed API keys or tokens\n`;
+                message += `- Use environment variables for sensitive configuration\n`;
+                message += `- Review [GitHub Secret Scanning](https://docs.github.com/en/code-security/secret-scanning) documentation\n\n`;
+              }
+
+              if (credentialIssues > 0) {
+                message += `**Hardcoded Credentials:**\n`;
+                message += `- Move credentials to environment variables (.env files)\n`;
+                message += `- Never commit .env files to the repository\n`;
+                message += `- Use Supabase environment variables for database configuration\n\n`;
+              }
+
+              if (supabaseIssues > 0) {
+                message += `**Supabase Security:**\n`;
+                message += `- Ensure Row Level Security (RLS) policies are enabled\n`;
+                message += `- Use anon key in client code, service role only in server/Edge Functions\n`;
+                message += `- Review [Supabase Security Best Practices](https://supabase.com/docs/guides/auth/row-level-security)\n\n`;
+              }
+
+              if (bestPracticeWarnings > 0) {
+                message += `**Security Best Practices:**\n`;
+                message += `- Avoid \`eval()\` and dynamic code execution\n`;
+                message += `- Sanitize user input before using \`dangerouslySetInnerHTML\`\n`;
+                message += `- Use HTTPS for all external links in documentation\n\n`;
+              }
+            } else {
+              message += `### ✅ No Security Issues Detected\n\n`;
+              message += `All security validations passed successfully. Your code follows security best practices.\n\n`;
+            }
+
+            // Footer
+            message += `---\n`;
+            message += `📊 **Detailed Reports:** Available in workflow artifacts (90-day retention)\n\n`;
+            message += `*Automated security validation establishing reliable protection across your environment*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message
+            });
+
+      - name: Upload security artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-comprehensive-reports-${{ github.run_number }}
+          path: |
+            npm-audit-full.json
+            npm-audit-prod.json
+            http-links.txt
+          retention-days: 90
+
+      # ============================================================================
+      # FAILURE HANDLING
+      # ============================================================================
+
+      - name: Fail on critical vulnerabilities
+        if: steps.audit_analysis.outputs.has_critical_vulns == 'true'
+        run: |
+          echo "❌ Critical or high-severity vulnerabilities detected"
+          echo "Run 'npm audit fix' to address security issues"
+          exit 1

@@ -16,7 +16,7 @@ jobs:
     if: github.event_name == 'issues' && github.event.action == 'opened'
 
     steps:
-      - name: Auto-label based on content
+      - name: Apply comprehensive intelligent labeling
         uses: actions/github-script@v7
         with:
           script: |
@@ -27,37 +27,185 @@ jobs:
 
             let labels = [];
 
-            // Type detection
-            if (text.includes('bug') || text.includes('error') || text.includes('broken')) {
+            // ================================================================
+            // TYPE DETECTION - What kind of work is this?
+            // ================================================================
+
+            if (text.match(/\b(bug|error|broken|crash|fail|not working|issue|problem|exception)\b/)) {
               labels.push('type:bug');
-            } else if (text.includes('feature') || text.includes('enhancement') || text.includes('add')) {
+            } else if (text.match(/\b(feature|enhancement|add|new|implement|create|build)\b/)) {
               labels.push('type:feature');
-            } else if (text.includes('documentation') || text.includes('docs')) {
+            } else if (text.match(/\b(doc|documentation|readme|guide|wiki)\b/)) {
               labels.push('type:docs');
-            } else if (text.includes('question') || text.includes('how to')) {
+            } else if (text.match(/\b(question|how|what|why|help|clarif)\b/)) {
               labels.push('type:question');
+            } else if (text.match(/\b(refactor|cleanup|improve|optimize|reorganize)\b/)) {
+              labels.push('type:refactor');
+            } else if (text.match(/\b(test|testing|coverage|spec)\b/)) {
+              labels.push('type:testing');
             }
 
-            // Priority detection
-            if (text.includes('critical') || text.includes('urgent') || text.includes('blocker')) {
+            // ================================================================
+            // PRIORITY DETECTION - How urgent/important is this?
+            // ================================================================
+
+            // Critical: Security, data loss, complete system failure
+            if (text.match(/\b(critical|urgent|blocker|security|data loss|exploit|breach|down|outage)\b/)) {
+              labels.push('priority:critical');
+            }
+            // High: Major functionality broken, blocking work
+            else if (text.match(/\b(high|important|blocking|major|severe)\b/)) {
               labels.push('priority:high');
-            } else if (text.includes('important')) {
+            }
+            // Medium: Important but not blocking
+            else if (text.match(/\b(medium|moderate|normal)\b/)) {
               labels.push('priority:medium');
             }
-
-            // Area detection
-            if (text.includes('ci') || text.includes('workflow') || text.includes('action')) {
-              labels.push('area:ci-cd');
-            } else if (text.includes('security') || text.includes('vulnerability')) {
-              labels.push('area:security');
-            } else if (text.includes('performance') || text.includes('slow')) {
-              labels.push('area:performance');
-            } else if (text.includes('accessibility') || text.includes('a11y')) {
-              labels.push('area:accessibility');
+            // Low: Nice to have, minor issues
+            else if (text.match(/\b(low|minor|trivial|nice to have|cosmetic)\b/)) {
+              labels.push('priority:low');
             }
 
-            // Apply labels
+            // ================================================================
+            // AREA DETECTION - NABIP AMS Feature Areas
+            // ================================================================
+
+            if (text.match(/\b(member|membership|renewal|dues|onboard)\b/)) {
+              labels.push('area:members');
+            }
+            if (text.match(/\b(chapter|national|state|local|hierarchy)\b/)) {
+              labels.push('area:chapters');
+            }
+            if (text.match(/\b(event|registration|ticket|attendee|check-in|qr)\b/)) {
+              labels.push('area:events');
+            }
+            if (text.match(/\b(campaign|email|communication|segment|newsletter)\b/)) {
+              labels.push('area:campaigns');
+            }
+            if (text.match(/\b(course|learning|lms|ce credit|certification|designation|rebc)\b/)) {
+              labels.push('area:learning');
+            }
+            if (text.match(/\b(report|analytics|dashboard|chart|visualization|metric)\b/)) {
+              labels.push('area:reports');
+            }
+            if (text.match(/\b(payment|invoice|stripe|billing|transaction|revenue)\b/)) {
+              labels.push('area:financial');
+            }
+
+            // ================================================================
+            // TECHNICAL AREA DETECTION
+            // ================================================================
+
+            if (text.match(/\b(ui|ux|design|component|layout|styling|css|tailwind)\b/)) {
+              labels.push('ui/ux');
+            }
+            if (text.match(/\b(database|supabase|postgres|rls|migration|schema|query|sql)\b/)) {
+              labels.push('database');
+            }
+            if (text.match(/\b(auth|authentication|authorization|login|permission|rls|rbac)\b/)) {
+              labels.push('security');
+            }
+            if (text.match(/\b(api|endpoint|rest|graphql|server action)\b/)) {
+              labels.push('api');
+            }
+            if (text.match(/\b(deploy|vercel|build|ci|cd|workflow|action)\b/)) {
+              labels.push('deployment');
+            }
+            if (text.match(/\b(performance|slow|optimization|speed|loading|cache)\b/)) {
+              labels.push('type:performance');
+            }
+            if (text.match(/\b(accessibility|a11y|wcag|aria|screen reader|keyboard)\b/)) {
+              labels.push('accessibility');
+            }
+
+            // ================================================================
+            // TECHNOLOGY TAGS - Stack-specific
+            // ================================================================
+
+            if (text.match(/\b(react|component|hook|useeffect|usestate|jsx|tsx)\b/)) {
+              labels.push('tech:react');
+            }
+            if (text.match(/\b(typescript|type|interface|generic|ts)\b/)) {
+              labels.push('tech:typescript');
+            }
+            if (text.match(/\b(supabase|row level security)\b/)) {
+              labels.push('tech:supabase');
+            }
+            if (text.match(/\b(vercel|deployment|edge)\b/)) {
+              labels.push('tech:vercel');
+            }
+            if (text.match(/\b(vite|build|bundler)\b/)) {
+              labels.push('tech:vite');
+            }
+            if (text.match(/\b(tailwind|utility|class)\b/)) {
+              labels.push('tech:tailwind');
+            }
+
+            // ================================================================
+            // EFFORT ESTIMATION - Time to implement
+            // ================================================================
+
+            // Small: < 4 hours (simple fixes, minor changes)
+            if (text.match(/\b(typo|fix typo|small fix|quick fix|minor change)\b/) ||
+                labels.includes('type:docs')) {
+              labels.push('effort:small');
+            }
+            // Large: 3-5 days (major features, complex refactoring)
+            else if (text.match(/\b(major refactor|rewrite|redesign|complete overhaul)\b/) ||
+                     (labels.includes('type:feature') && text.match(/\b(system|platform|infrastructure)\b/))) {
+              labels.push('effort:large');
+            }
+            // Epic: > 1 week (multiple related features, architectural changes)
+            else if (text.match(/\b(epic|initiative|project|multi-)\b/)) {
+              labels.push('effort:epic');
+            }
+            // Medium: 1-2 days (standard features, moderate bugs)
+            else if (labels.includes('type:feature') || labels.includes('type:bug')) {
+              labels.push('effort:medium');
+            }
+
+            // ================================================================
+            // SPECIAL LABELS - Categorization and workflow
+            // ================================================================
+
+            // Breaking changes
+            if (text.match(/\b(breaking|breaking change|backwards incompatible|migration required)\b/)) {
+              labels.push('breaking-change');
+            }
+
+            // Needs discussion
+            if (text.match(/\b(discuss|decision|rfc|proposal|design decision)\b/) ||
+                title.includes('?')) {
+              labels.push('needs-discussion');
+            }
+
+            // Good first issue (beginner-friendly)
+            if (text.match(/\b(good first issue|beginner|easy|simple|starter)\b/) ||
+                labels.includes('type:docs') ||
+                (labels.includes('effort:small') && !labels.includes('priority:critical'))) {
+              labels.push('good-first-issue');
+            }
+
+            // Help wanted
+            if (text.match(/\b(help wanted|help needed|looking for help|need help)\b/)) {
+              labels.push('help-wanted');
+            }
+
+            // Dependency related
+            if (text.match(/\b(dependency|dependabot|npm|package|upgrade|update)\b/)) {
+              labels.push('dependencies');
+            }
+
+            // ================================================================
+            // APPLY LABELS
+            // ================================================================
+
             if (labels.length > 0) {
+              // Remove duplicates
+              labels = [...new Set(labels)];
+
+              console.log(`Applying ${labels.length} intelligent labels:`, labels);
+
               try {
                 await github.rest.issues.addLabels({
                   owner: context.repo.owner,
@@ -65,9 +213,14 @@ jobs:
                   issue_number: issue.number,
                   labels: labels
                 });
+
+                console.log(`✅ Successfully applied labels to issue #${issue.number}`);
               } catch (error) {
-                console.log('Some labels may not exist:', error.message);
+                console.log('⚠️ Some labels may not exist:', error.message);
+                console.log('Create missing labels via repository settings or setup-labels script');
               }
+            } else {
+              console.log('ℹ️ No matching labels found for this issue');
             }
 
       - name: Welcome new contributors

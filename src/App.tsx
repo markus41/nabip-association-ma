@@ -6,6 +6,7 @@ import { CommandPalette } from '@/components/features/CommandPalette'
 import { DashboardView } from '@/components/features/DashboardView'
 import { MembersView } from '@/components/features/MembersView'
 import { EventsView } from '@/components/features/EventsView'
+import { EventCreationDialog } from '@/components/features/EventCreationDialog'
 import { CommunicationsView } from '@/components/features/CommunicationsView'
 import { FinanceView } from '@/components/features/FinanceView'
 import { ChaptersView } from '@/components/features/ChaptersView'
@@ -38,6 +39,7 @@ import {
 } from '@/lib/data-utils'
 import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report } from '@/lib/types'
 import { toast } from 'sonner'
+import { v4 as uuidv4 } from 'uuid'
 
 type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal'
 
@@ -45,6 +47,7 @@ function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
   const [isLoading, setIsLoading] = useState(true)
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
+  const [showEventCreationDialog, setShowEventCreationDialog] = useState(false)
   
   const [members, setMembers] = useKV<Member[]>('ams-members', [])
   const [chapters, setChapters] = useKV<Chapter[]>('ams-chapters', [])
@@ -154,8 +157,21 @@ function App() {
   }
 
   const handleAddEvent = () => {
-    toast.success('Create Event', {
-      description: 'Event creation wizard would open here.'
+    setShowEventCreationDialog(true)
+  }
+
+  const handleCreateEvent = (eventData: Omit<Event, 'id' | 'registeredCount' | 'waitlistCount'>) => {
+    const newEvent: Event = {
+      ...eventData,
+      id: uuidv4(),
+      registeredCount: 0,
+      waitlistCount: 0,
+    }
+    
+    setEvents([...(events || []), newEvent])
+    
+    toast.success('Event Created', {
+      description: `${newEvent.name} has been created successfully.`
     })
   }
 
@@ -321,6 +337,12 @@ function App() {
         open={showAddMemberDialog}
         onOpenChange={setShowAddMemberDialog}
         onAddMember={handleMemberAdded}
+      />
+      <EventCreationDialog
+        open={showEventCreationDialog}
+        onOpenChange={setShowEventCreationDialog}
+        onCreateEvent={handleCreateEvent}
+        chapters={(chapters || []).map(c => ({ id: c.id, name: c.name }))}
       />
       <Toaster />
     </div>

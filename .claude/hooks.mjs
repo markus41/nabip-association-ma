@@ -184,6 +184,14 @@ export const hooks = {
     console.log('   • cryptography-expert        - Cryptographic implementations');
     console.log('   • vulnerability-hunter       - Security vulnerability detection');
     console.log('');
+    console.log('⚡ ACTIVE SKILLS (Auto-invoked):');
+    console.log('   • supabase-schema-validator  - Database schema, migrations, RLS policies');
+    console.log('   • component-generator        - React 19 components with Shadcn/ui v4');
+    console.log('   • member-workflow            - Member lifecycle, renewals, engagement');
+    console.log('   • analytics-helper           - Recharts dashboards, reports, KPIs');
+    console.log('   • event-management           - Event registration, QR check-in, analytics');
+    console.log('   • rbac-validator             - Four-tier RBAC, permissions, audit logs');
+    console.log('');
     console.log('📋 CUSTOM COMMANDS:');
     console.log('   /check-links        - Validate all links in documentation');
     console.log('   /review-all         - Comprehensive code review');
@@ -213,6 +221,7 @@ export const hooks = {
     console.log('   • SECURITY.md                 - Security policy and reporting');
     console.log('   • CONTRIBUTING.md             - Contribution guidelines');
     console.log('   • .claude/settings.json       - Project configuration');
+    console.log('   • .claude/skills/README.md    - Agent skills guide (NEW!)');
     console.log('');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Ready to streamline operations with sustainable development! 🎉');
