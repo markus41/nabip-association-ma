@@ -10,9 +10,13 @@ import { EventCreationDialog } from '@/components/features/EventCreationDialog'
 import { CommunicationsView } from '@/components/features/CommunicationsView'
 import { FinanceView } from '@/components/features/FinanceView'
 import { ChaptersView } from '@/components/features/ChaptersView'
+import { ChapterAdminView } from '@/components/features/ChapterAdminView'
 import { LearningView } from '@/components/features/LearningView'
 import { MemberPortal } from '@/components/features/MemberPortal'
 import { ReportsView } from '@/components/features/ReportsView'
+import { RoleSwitcher } from '@/components/features/RoleSwitcher'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { Role } from '@/lib/rbac/permissions'
 import {
   ChartBar,
   UserCircle,
@@ -40,12 +44,13 @@ import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Cou
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 
-type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal'
+type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'chapter-admin' | 'learning' | 'reports' | 'portal'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
   const [isLoading, setIsLoading] = useState(true)
   const [showEventCreationDialog, setShowEventCreationDialog] = useState(false)
+  const { user } = useAuth()
   
   const [members, setMembers] = useKV<Member[]>('ams-members', [])
   const [chapters, setChapters] = useKV<Chapter[]>('ams-chapters', [])
@@ -118,6 +123,15 @@ function App() {
     initializeData()
   }, [])
 
+  // Redirect chapter admins to their view by default
+  useEffect(() => {
+    if (user && user.role === Role.CHAPTER_ADMIN) {
+      setCurrentView('chapter-admin')
+    } else if (user && user.role !== Role.CHAPTER_ADMIN && currentView === 'chapter-admin') {
+      setCurrentView('dashboard')
+    }
+  }, [user])
+
   useEffect(() => {
     if (members && members.length > 0 && events && events.length > 0 && transactions && transactions.length > 0) {
       const now = new Date()
@@ -177,21 +191,29 @@ function App() {
     })
   }
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: ChartBar },
-    { id: 'members', label: 'Members', icon: UserCircle },
-    { id: 'events', label: 'Events', icon: CalendarDots },
-    { id: 'communications', label: 'Communications', icon: EnvelopeSimple },
-    { id: 'finance', label: 'Finance', icon: CurrencyDollar },
-    { id: 'chapters', label: 'Chapters', icon: Buildings },
-    { id: 'learning', label: 'Learning', icon: GraduationCap },
-    { id: 'reports', label: 'Reports', icon: FileText },
-    { id: 'portal', label: 'My Portal', icon: House }
-  ]
+  // Navigation items based on user role
+  const navItems = user?.role === Role.CHAPTER_ADMIN 
+    ? [
+        { id: 'chapter-admin', label: 'My Chapter', icon: Buildings, roles: [Role.CHAPTER_ADMIN] },
+        { id: 'members', label: 'Members', icon: UserCircle, roles: [Role.CHAPTER_ADMIN] },
+        { id: 'events', label: 'Events', icon: CalendarDots, roles: [Role.CHAPTER_ADMIN] },
+        { id: 'communications', label: 'Communications', icon: EnvelopeSimple, roles: [Role.CHAPTER_ADMIN] },
+        { id: 'reports', label: 'Reports', icon: FileText, roles: [Role.CHAPTER_ADMIN] },
+        { id: 'portal', label: 'My Portal', icon: House, roles: [Role.CHAPTER_ADMIN, Role.MEMBER] }
+      ]
+    : [
+        { id: 'dashboard', label: 'Dashboard', icon: ChartBar, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
+        { id: 'members', label: 'Members', icon: UserCircle, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
+        { id: 'events', label: 'Events', icon: CalendarDots, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
+        { id: 'communications', label: 'Communications', icon: EnvelopeSimple, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
+        { id: 'finance', label: 'Finance', icon: CurrencyDollar, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
+        { id: 'chapters', label: 'Chapters', icon: Buildings, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
+        { id: 'learning', label: 'Learning', icon: GraduationCap, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
+        { id: 'reports', label: 'Reports', icon: FileText, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN] },
+        { id: 'portal', label: 'My Portal', icon: House, roles: [Role.NATIONAL_ADMIN, Role.STATE_ADMIN, Role.MEMBER] }
+      ]
 
   const upcomingEvents = (events || [])
-    .filter(e => e.status === 'published' && new Date(e.startDate) > new Date())
-    .slice(0, 5)
 
   return (
     <div className="min-h-screen bg-background">
@@ -207,22 +229,25 @@ function App() {
             </div>
           </div>
           
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden md:flex items-center gap-2"
-            onClick={() => {
-              const event = new KeyboardEvent('keydown', {
-                key: 'k',
-                metaKey: true,
-                bubbles: true
-              })
-              document.dispatchEvent(event)
-            }}
-          >
-            <Command size={14} weight="bold" />
-            <span className="text-muted-foreground">⌘K</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <RoleSwitcher />
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden md:flex items-center gap-2"
+              onClick={() => {
+                const event = new KeyboardEvent('keydown', {
+                  key: 'k',
+                  metaKey: true,
+                  bubbles: true
+                })
+                document.dispatchEvent(event)
+              }}
+            >
+              <Command size={14} weight="bold" />
+              <span className="text-muted-foreground">⌘K</span>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -287,6 +312,17 @@ function App() {
           )}
           {currentView === 'chapters' && (
             <ChaptersView chapters={chapters || []} members={members || []} events={events || []} loading={isLoading} />
+          )}
+          {currentView === 'chapter-admin' && (
+            <ChapterAdminView
+              chapters={chapters || []}
+              members={members || []}
+              events={events || []}
+              transactions={transactions || []}
+              onAddMember={handleAddMember}
+              onAddEvent={handleAddEvent}
+              loading={isLoading}
+            />
           )}
           {currentView === 'learning' && (
             <LearningView
