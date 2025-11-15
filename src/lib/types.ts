@@ -362,10 +362,50 @@ export interface ReportColumn {
 export interface AuditLog {
   id: string
   userId: string
+  userName?: string
   action: string
   entity: string
   entityId: string
   changes?: Record<string, any>
+  metadata?: Record<string, any>
   timestamp: string
   ipAddress?: string
+  userAgent?: string
+}
+
+export interface User {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  role: 'admin' | 'manager' | 'member' | 'guest'
+  status: 'active' | 'inactive' | 'pending'
+  createdAt: string
+  lastLoginAt?: string
+  avatarUrl?: string
+  memberId?: string // Link to Member record if applicable
+}
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+
+export interface RoleAssignmentRequest {
+  id: string
+  userId: string
+  userName: string
+  currentRole: string
+  requestedRole: string
+  requestedBy: string
+  requestedByName: string
+  requestedAt: string
+  status: ApprovalStatus
+  reason?: string
+  approvers: Array<{
+    userId: string
+    userName: string
+    status: ApprovalStatus | 'pending'
+    respondedAt?: string
+    comment?: string
+  }>
+  resolvedAt?: string
+  resolvedBy?: string
 }
