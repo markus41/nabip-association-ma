@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://brookside-buisness-intelligence.github.io/ams-docs/
+    about: Browse the live documentation site
+  - name: 💬 Ask a Question
+    url: https://github.com/Brookside-Buisness-Intelligence/ams-docs/discussions
+    about: Ask questions and discuss ideas in GitHub Discussions
+  - name: 🚀 VitePress Documentation
+    url: https://vitepress.dev/
+    about: VitePress framework documentation for advanced customization

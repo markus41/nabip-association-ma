@@ -1,0 +1,164 @@
+{
+  "project": {
+    "name": "nabip-association-ma",
+    "description": "NABIP Association Management Platform - Establishing scalable association management infrastructure supporting sustainable growth",
+    "type": "saas-platform",
+    "version": "1.0.0",
+    "architecture": "vite-react",
+    "patterns": [
+      "react-19-patterns",
+      "vite-optimization",
+      "github-spark-integration",
+      "component-based-architecture"
+    ]
+  },
+  "platform": {
+    "framework": "vite",
+    "version": "6.3.5",
+    "runtime": "browser",
+    "react": "19.0.0",
+    "typescript": "5.7.2",
+    "bundler": "vite",
+    "packageManager": "npm",
+    "nodeVersion": "20.x"
+  },
+  "features": {
+    "enableTodoWrite": true,
+    "enableAskUserQuestion": true,
+    "enableAgents": true,
+    "enableCommands": true,
+    "enableMCP": true,
+    "enableGitHubIntegration": true,
+    "enableSecurityScanning": true,
+    "enablePerformanceMonitoring": true
+  },
+  "agents": {
+    "registry": {
+      "documentation-expert": {
+        "path": ".claude/agents/documentation-expert.md",
+        "description": "Expert in creating comprehensive technical documentation with Brookside BI brand voice",
+        "tags": ["documentation", "technical-writing", "api-docs"]
+      },
+      "senior-reviewer": {
+        "path": ".claude/agents/senior-reviewer.md",
+        "description": "Senior code reviewer focusing on best practices and sustainable architecture",
+        "tags": ["review", "code-quality", "best-practices"]
+      },
+      "test-strategist": {
+        "path": ".claude/agents/test-strategist.md",
+        "description": "Test strategy expert for comprehensive testing approaches",
+        "tags": ["testing", "quality-assurance", "test-coverage"]
+      },
+      "security-specialist": {
+        "path": ".claude/agents/security-specialist.md",
+        "description": "Security expert for vulnerability assessment and secure coding practices",
+        "tags": ["security", "vulnerabilities", "owasp"]
+      },
+      "performance-optimizer": {
+        "path": ".claude/agents/performance-optimizer.md",
+        "description": "Performance optimization specialist for scalable solutions",
+        "tags": ["performance", "optimization", "scalability"]
+      },
+      "cryptography-expert": {
+        "path": ".claude/agents/cryptography-expert.md",
+        "description": "Cryptography specialist for secure data handling",
+        "tags": ["cryptography", "encryption", "security"]
+      },
+      "vulnerability-hunter": {
+        "path": ".claude/agents/vulnerability-hunter.md",
+        "description": "Security vulnerability detection and remediation expert",
+        "tags": ["security", "vulnerabilities", "penetration-testing"]
+      }
+    }
+  },
+  "commands": {
+    "registry": {
+      "check-links": {
+        "path": ".claude/commands/check-links.md",
+        "description": "Validate all links in documentation and markdown files",
+        "tags": ["validation", "documentation", "quality"]
+      },
+      "review-all": {
+        "path": ".claude/commands/review-all.md",
+        "description": "Comprehensive code review across the entire codebase",
+        "tags": ["review", "quality", "best-practices"]
+      },
+      "secure-audit": {
+        "path": ".claude/commands/secure-audit.md",
+        "description": "Security audit to identify vulnerabilities and compliance issues",
+        "tags": ["security", "audit", "compliance"]
+      },
+      "update-changelog": {
+        "path": ".claude/commands/update-changelog.md",
+        "description": "Update CHANGELOG.md with recent commits and releases",
+        "tags": ["documentation", "release", "changelog"]
+      },
+      "create-agent": {
+        "path": ".claude/commands/create-agent.md",
+        "description": "Create a new specialized Claude agent",
+        "tags": ["agent", "automation", "development"]
+      },
+      "add-command": {
+        "path": ".claude/commands/add-command.md",
+        "description": "Add a new custom command to Claude",
+        "tags": ["command", "automation", "development"]
+      }
+    }
+  },
+  "workflows": {
+    "github": {
+      "templates": ".github/ISSUE_TEMPLATE",
+      "prTemplate": ".github/PULL_REQUEST_TEMPLATE.md",
+      "scripts": ".github/scripts",
+      "workflows": ".github/workflows"
+    }
+  },
+  "mcp": {
+    "configPath": ".claude/mcp.json",
+    "servers": [
+      "github",
+      "memory",
+      "fetch",
+      "sequential-thinking"
+    ]
+  },
+  "paths": {
+    "src": "src",
+    "public": "public",
+    "tests": "__tests__",
+    "docs": "docs",
+    "config": ".",
+    "claude": ".claude"
+  },
+  "conventions": {
+    "fileNaming": "kebab-case",
+    "componentNaming": "PascalCase",
+    "functionNaming": "camelCase",
+    "constantNaming": "SCREAMING_SNAKE_CASE",
+    "cssNaming": "kebab-case"
+  },
+  "git": {
+    "defaultBranch": "main",
+    "commitConventions": "conventional-commits",
+    "branchNaming": "feature/*, fix/*, docs/*, refactor/*, test/*, chore/*"
+  },
+  "testing": {
+    "framework": "vitest",
+    "coverage": {
+      "threshold": 80,
+      "reporters": ["text", "lcov", "html"]
+    }
+  },
+  "development": {
+    "port": 5173,
+    "host": "localhost",
+    "https": false,
+    "open": true
+  },
+  "_metadata": {
+    "version": "1.0.0",
+    "created": "2024-11-14",
+    "lastModified": "2024-11-14",
+    "phase": "Phase 1 Complete - Foundation established"
+  }
+}

@@ -1,0 +1,131 @@
+name: Feature Request
+description: Suggest a new feature for the documentation site
+title: "[Feature]: "
+labels: ["enhancement", "feature-request"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Help us understand what you'd like to see in the documentation site.
+
+  - type: dropdown
+    id: feature-category
+    attributes:
+      label: Feature Category
+      description: What type of feature are you requesting?
+      options:
+        - Navigation/UI enhancement
+        - Search improvement
+        - New component
+        - Interactive feature
+        - Build/deployment automation
+        - Integration with external tool
+        - Performance optimization
+        - Accessibility improvement
+        - Mobile experience
+        - Documentation workflow
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: |
+        Describe the problem or limitation you're experiencing.
+        Example: "It's difficult to compare different configuration options side-by-side"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature you'd like to see implemented
+      placeholder: |
+        What would you like to happen?
+        How should it work?
+        What should the user experience be?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+      placeholder: |
+        What other approaches could solve this problem?
+        Why is the proposed solution better?
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples or Mockups
+      description: Share examples from other documentation sites or mockups of your idea
+      placeholder: |
+        Links to similar features:
+        - https://example.com/similar-feature
+
+        Screenshots or mockups:
+        (drag and drop images here)
+    validations:
+      required: false
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Expected Impact
+      description: Who would benefit from this feature?
+      options:
+        - All users
+        - Developers
+        - DevOps Engineers
+        - Architects
+        - Content contributors
+        - Site maintainers
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Critical (blocking my work)
+        - High (significantly improves workflow)
+        - Medium (nice to have)
+        - Low (future enhancement)
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical-notes
+    attributes:
+      label: Technical Considerations (Optional)
+      description: Any technical details, dependencies, or implementation notes
+      placeholder: |
+        - May require VitePress plugin: X
+        - Could leverage existing component: Y
+        - Performance implications: Z
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have checked the VitePress documentation for existing solutions
+          required: false
+        - label: I am willing to contribute to implementing this feature
+          required: false

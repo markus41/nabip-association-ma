@@ -1,0 +1,84 @@
+name: Question / Help
+description: Ask a question about the documentation or AMS platform
+title: "[Question]: "
+labels: ["question"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Before You Ask
+
+        👋 Thanks for your question! Please check these resources first:
+        - [Documentation Site](https://brookside-buisness-intelligence.github.io/ams-docs/)
+        - [Quick Reference Guide](https://brookside-buisness-intelligence.github.io/ams-docs/quick-reference)
+        - [GitHub Discussions](https://github.com/Brookside-Buisness-Intelligence/ams-docs/discussions)
+
+        If you didn't find an answer, we're here to help!
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Question Category
+      description: What is your question about?
+      options:
+        - Getting Started
+        - Development Workflow
+        - Architecture & Design
+        - Infrastructure & Deployment
+        - Cloud Configuration
+        - Error Handling
+        - Best Practices
+        - VitePress Customization
+        - Integration Setup
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: Ask your question clearly and provide context
+      placeholder: |
+        How do I...?
+        What is the best way to...?
+        Can you explain...?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Provide any relevant background, what you've tried, or related documentation
+      placeholder: |
+        I've tried...
+        I'm working on...
+        I found this page but it doesn't explain...
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (if applicable)
+      description: If relevant, provide details about your environment
+      placeholder: |
+        - Node.js version:
+        - VitePress version:
+        - Operating System:
+        - Browser (if UI related):
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues and discussions for similar questions
+          required: true
+        - label: I have checked the documentation site for relevant information
+          required: true
