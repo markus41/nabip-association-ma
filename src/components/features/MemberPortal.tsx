@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalStorage } from '@/lib/useLocalStorage'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,7 +28,7 @@ interface MemberPortalProps {
 }
 
 export function MemberPortal({ memberId }: MemberPortalProps) {
-  const [currentMember, setCurrentMember] = useKV<Member | null>('current-member', null)
+  const [currentMember, setCurrentMember] = useLocalStorage<Member | null>('current-member', null)
   const [isEditing, setIsEditing] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -468,3 +468,5 @@ export function MemberPortal({ memberId }: MemberPortalProps) {
     </div>
   )
 }
+
+export default MemberPortal

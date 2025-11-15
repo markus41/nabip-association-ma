@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalStorage } from '@/lib/useLocalStorage'
 import { Toaster } from '@/components/ui/sonner'
 import { Button } from '@/components/ui/button'
 import { CommandPalette } from '@/components/features/CommandPalette'
@@ -17,7 +17,6 @@ const LearningView = lazy(() => import('@/components/features/LearningView'))
 const MemberPortal = lazy(() => import('@/components/features/MemberPortal'))
 const ReportsView = lazy(() => import('@/components/features/ReportsView'))
 const AddMemberDialog = lazy(() => import('@/components/features/AddMemberDialog'))
-const LoginScreen = lazy(() => import('@/components/features/LoginScreen'))
 import {
   ChartBar,
   UserCircle,
@@ -48,27 +47,27 @@ import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 import { useAuth } from '@/lib/auth/AuthContext'
 import type { RoleName } from '@/lib/rbac'
-// import { RoleSwitcher } from '@/components/features/RoleSwitcher'
+import { RoleSwitcher } from '@/components/features/RoleSwitcher'
 
 type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'chapter-admin' | 'learning' | 'reports' | 'portal'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false) // Demo mode: no loading needed
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
   const [showEventCreationDialog, setShowEventCreationDialog] = useState(false)
-  const { user, isLoading: authLoading, error: authError, clearError } = useAuth()
+  const { user } = useAuth()
 
   // All hooks must be called before any conditional returns
-  const [members, setMembers] = useKV<Member[]>('ams-members', [])
-  const [chapters, setChapters] = useKV<Chapter[]>('ams-chapters', [])
-  const [events, setEvents] = useKV<Event[]>('ams-events', [])
-  const [transactions, setTransactions] = useKV<Transaction[]>('ams-transactions', [])
-  const [emailCampaigns, setEmailCampaigns] = useKV<EmailCampaign[]>('ams-email-campaigns', [])
-  const [templates] = useKV<EmailTemplate[]>('ams-email-templates', emailTemplates)
-  const [courses, setCourses] = useKV<Course[]>('ams-courses', [])
-  const [enrollments, setEnrollments] = useKV<Enrollment[]>('ams-enrollments', [])
-  const [reports, setReports] = useKV<Report[]>('ams-reports', [])
+  const [members, setMembers] = useLocalStorage<Member[]>('ams-members', [])
+  const [chapters, setChapters] = useLocalStorage<Chapter[]>('ams-chapters', [])
+  const [events, setEvents] = useLocalStorage<Event[]>('ams-events', [])
+  const [transactions, setTransactions] = useLocalStorage<Transaction[]>('ams-transactions', [])
+  const [emailCampaigns, setEmailCampaigns] = useLocalStorage<EmailCampaign[]>('ams-email-campaigns', [])
+  const [templates] = useLocalStorage<EmailTemplate[]>('ams-email-templates', emailTemplates)
+  const [courses, setCourses] = useLocalStorage<Course[]>('ams-courses', [])
+  const [enrollments, setEnrollments] = useLocalStorage<Enrollment[]>('ams-enrollments', [])
+  const [reports, setReports] = useLocalStorage<Report[]>('ams-reports', [])
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
     activeMembers: 0,
@@ -82,97 +81,45 @@ function App() {
     expiringSoon: 0
   })
 
-  // Show loading screen while checking authentication
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-          {authError && (
-            <div className="mt-4 p-4 bg-destructive/10 text-destructive rounded-md max-w-md mx-auto">
-              <p className="font-semibold">Authentication Error</p>
-              <p className="text-sm mt-1">{authError}</p>
-              <button
-                onClick={() => {
-                  clearError()
-                  window.location.reload()
-                }}
-                className="mt-3 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm hover:bg-destructive/90"
-              >
-                Retry
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // Show login screen if not authenticated
-  if (!user) {
-    return (
-      <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      }>
-        <LoginScreen />
-      </Suspense>
-    )
-  }
-
   useEffect(() => {
-    // Only initialize data if user is authenticated
-    if (!user) {
-      setIsLoading(false)
-      return
+    // Demo mode: Initialize data synchronously on first load
+    if (!user) return
+
+    console.log('[App] Initializing data for demo user:', user.email)
+
+    if (!members || members.length === 0) {
+      const newMembers = generateMembers(100)
+      setMembers(newMembers)
     }
 
-    const initializeData = async () => {
-      console.log('[App] Initializing data for authenticated user:', user.email)
-      setIsLoading(true)
-
-      if (!members || members.length === 0) {
-        const newMembers = generateMembers(100)
-        setMembers(newMembers)
-      }
-
-      if (!chapters || chapters.length === 0) {
-        const newChapters = generateChapters()
-        setChapters(newChapters)
-      }
-
-      if (!events || events.length === 0) {
-        const newEvents = generateEvents(20)
-        setEvents(newEvents)
-      }
-
-      if (!transactions || transactions.length === 0) {
-        const newTransactions = generateTransactions(50)
-        setTransactions(newTransactions)
-      }
-
-      // Email campaigns initialization removed - will be created via wizard
-
-      if (!courses || courses.length === 0) {
-        const newCourses = generateCourses(12)
-        setCourses(newCourses)
-
-        const courseIds = newCourses.map(c => c.id)
-        const newEnrollments = generateEnrollments(30, courseIds)
-        setEnrollments(newEnrollments)
-      }
-
-      if (!reports || reports.length === 0) {
-        const newReports = generateReports(20)
-        setReports(newReports)
-      }
-
-      setTimeout(() => setIsLoading(false), 500)
+    if (!chapters || chapters.length === 0) {
+      const newChapters = generateChapters()
+      setChapters(newChapters)
     }
 
-    initializeData()
+    if (!events || events.length === 0) {
+      const newEvents = generateEvents(20)
+      setEvents(newEvents)
+    }
+
+    if (!transactions || transactions.length === 0) {
+      const newTransactions = generateTransactions(50)
+      setTransactions(newTransactions)
+    }
+
+    if (!courses || courses.length === 0) {
+      const newCourses = generateCourses(12)
+      setCourses(newCourses)
+
+      const courseIds = newCourses.map(c => c.id)
+      const newEnrollments = generateEnrollments(30, courseIds)
+      setEnrollments(newEnrollments)
+    }
+
+    if (!reports || reports.length === 0) {
+      const newReports = generateReports(20)
+      setReports(newReports)
+    }
   }, [user?.id]) // Only re-run when user changes
 
   // Redirect chapter admins to their view by default
@@ -389,13 +336,16 @@ function App() {
               <Buildings size={24} weight="duotone" className="text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold tracking-tight">NABIP AMS</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-semibold tracking-tight">NABIP AMS</h1>
+                <span className="text-xs px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 font-medium">DEMO</span>
+              </div>
               <p className="text-xs text-muted-foreground">Association Management System</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* <RoleSwitcher /> */}
+            <RoleSwitcher />
             <Button
               variant="outline"
               size="sm"

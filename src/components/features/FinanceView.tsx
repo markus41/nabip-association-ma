@@ -456,3 +456,5 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
     </div>
   )
 }
+
+export default FinanceView

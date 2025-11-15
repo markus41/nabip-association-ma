@@ -11,6 +11,7 @@ import { formatCurrency, formatDate } from '@/lib/data-utils'
 import { CustomLineChart, CustomBarChart } from './ChartComponents'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth/AuthContext'
 
 interface DashboardViewProps {
   stats: DashboardStats
@@ -20,25 +21,9 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ stats, upcomingEvents, recentTransactions, loading }: DashboardViewProps) {
-  const [userName, setUserName] = useState<string>('')
-  const [userRole, setUserRole] = useState<'admin' | 'member' | 'chapter_admin' | 'state_admin'>('member')
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const user = await window.spark.user()
-        if (user) {
-          setUserName(user.login)
-          // Establish role-based context from user metadata or default to member
-          // In production, this would come from authentication context or user profile
-          setUserRole('admin') // Default to admin for demo purposes
-        }
-      } catch (error) {
-        console.error('Failed to fetch user:', error)
-      }
-    }
-    fetchUser()
-  }, [])
+  const { user } = useAuth()
+  const userName = user?.name || 'Demo User'
+  const userRole = user?.role || 'member'
 
   const dailyChanges = [
     { label: 'New Members', value: 3, isPositive: true },
@@ -358,3 +343,5 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
     </div>
   )
 }
+
+export default DashboardView

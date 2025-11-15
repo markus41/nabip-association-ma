@@ -633,3 +633,5 @@ function MetricCard({ label, value, icon }: { label: string; value: string; icon
     </Card>
   )
 }
+
+export default EmailCampaignsView

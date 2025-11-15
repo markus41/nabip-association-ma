@@ -474,3 +474,5 @@ export function LearningView({ courses, enrollments, loading, onAddCourse }: Lea
     </div>
   )
 }
+
+export default LearningView

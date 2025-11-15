@@ -336,3 +336,5 @@ export function AddMemberDialog({
     </Dialog>
   )
 }
+
+export default AddMemberDialog

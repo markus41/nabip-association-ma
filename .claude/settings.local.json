@@ -78,7 +78,21 @@
       "mcp__supabase__execute_sql",
       "Bash(timeout /t 3 /nobreak)",
       "Bash(for batch in supabase/migrations/member_batches/members_batch_*.sql)",
-      "Bash(do echo \"Processing: $batch\")"
+      "Bash(do echo \"Processing: $batch\")",
+      "mcp__vercel__get_deployment",
+      "Bash(ping:*)",
+      "Bash(srccomponentsfeaturesEventCreationDialog.tsx)",
+      "Bash(srccomponentsfeaturesAddMemberDialog.tsx)",
+      "Bash(srccomponentsfeaturesDashboardView.tsx)",
+      "Bash(srccomponentsfeaturesMembersView.tsx)",
+      "Bash(srccomponentsfeaturesEventsView.tsx)",
+      "Bash(srccomponentsfeaturesEmailCampaignsView.tsx)",
+      "Bash(srccomponentsfeaturesFinanceView.tsx)",
+      "Bash(srccomponentsfeaturesChaptersView.tsx)",
+      "Bash(srccomponentsfeaturesChapterAdminView.tsx)",
+      "Bash(srccomponentsfeaturesLearningView.tsx)",
+      "Bash(srccomponentsfeaturesMemberPortal.tsx)",
+      "Bash(srccomponentsfeaturesReportsView.tsx)"
     ],
     "deny": [],
     "ask": []

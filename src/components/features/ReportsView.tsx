@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useLocalStorage } from '@/lib/useLocalStorage'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -85,8 +85,8 @@ export function ReportsView({
   const [executionError, setExecutionError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'details' | 'preview'>('details')
 
-  // Persistent report execution cache using useKV
-  const [reportExecutions, setReportExecutions] = useKV<Record<string, ReportExecution>>('ams-report-executions', {})
+  // Persistent report execution cache using localStorage
+  const [reportExecutions, setReportExecutions] = useLocalStorage<Record<string, ReportExecution>>('ams-report-executions', {})
 
   // Get cached data for selected report
   const reportData = selectedReport && reportExecutions[selectedReport.id]
@@ -1089,3 +1089,5 @@ export function ReportsView({
     </div>
   )
 }
+
+export default ReportsView

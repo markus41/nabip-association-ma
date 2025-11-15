@@ -119,114 +119,24 @@ async function mapAuthUserToUser(authUser: SupabaseUser): Promise<User | null> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUserState] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  // DEMO MODE: Start with a default demo user (National Admin)
+  const [user, setUserState] = useState<User | null>({
+    id: 'demo-user-123',
+    email: 'demo@nabip.org',
+    name: 'Demo User',
+    role: 'national_admin'
+  })
+  const [isLoading, setIsLoading] = useState(false) // No loading in demo mode
   const [error, setError] = useState<string | null>(null)
 
-  // Initialize auth state and set up listener
+  // Demo mode - no authentication required
   useEffect(() => {
-    console.log('[AuthContext] Initializing auth check...')
-
-    // Add timeout to prevent infinite loading if Supabase hangs
-    const timeout = setTimeout(() => {
-      console.error('[AuthContext] Session check timed out after 5 seconds')
-      setIsLoading(false)
-    }, 5000)
-
-    // Check current session
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        clearTimeout(timeout)
-        console.log('[AuthContext] getSession completed. Session:', session ? 'exists' : 'null')
-        if (session?.user) {
-          console.log('[AuthContext] Session user found, mapping to app user...')
-          mapAuthUserToUser(session.user).then(appUser => {
-            console.log('[AuthContext] User mapped:', appUser)
-            setUserState(appUser)
-            setError(null)
-            setIsLoading(false)
-          }).catch(err => {
-            console.error('[AuthContext] Error mapping user:', err)
-            setError('Failed to load user profile. Please refresh the page.')
-            setUserState(null)
-            setIsLoading(false)
-          })
-        } else {
-          console.log('[AuthContext] No session found, setting loading to false')
-          setError(null)
-          setIsLoading(false)
-        }
-      })
-      .catch(err => {
-        clearTimeout(timeout)
-        console.error('[AuthContext] getSession error:', err)
-        setError('Failed to connect to authentication service. Please check your internet connection.')
-        setIsLoading(false)
-      })
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const appUser = await mapAuthUserToUser(session.user)
-        setUserState(appUser)
-      } else {
-        setUserState(null)
-      }
-      setIsLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
+    console.log('[AuthContext] Running in DEMO MODE - authentication disabled')
   }, [])
 
   const login = async (email: string, password: string) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      console.log('[login] Attempting login for:', email)
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) {
-        console.error('[login] Auth error:', error)
-        setError(error.message || 'Invalid email or password')
-        throw error
-      }
-
-      console.log('[login] Auth successful, mapping user...')
-
-      if (data.user) {
-        // Add timeout for user mapping
-        const mappingPromise = mapAuthUserToUser(data.user)
-        const timeoutPromise = new Promise<null>((_, reject) => {
-          setTimeout(() => reject(new Error('User mapping timed out after 10 seconds')), 10000)
-        })
-
-        const appUser = await Promise.race([mappingPromise, timeoutPromise])
-        console.log('[login] User mapped successfully:', appUser)
-
-        if (!appUser) {
-          setError('No member record found for this account. Please contact support.')
-          throw new Error('No member record found')
-        }
-
-        setUserState(appUser)
-        setError(null)
-      }
-    } catch (error) {
-      console.error('[login] Login error:', error)
-      if (!error) {
-        setError('An unexpected error occurred during login')
-      }
-      setIsLoading(false)
-      throw error
-    } finally {
-      setIsLoading(false)
-    }
+    // DEMO MODE: Login not implemented
+    console.log('[login] Demo mode - login bypassed')
   }
 
   const clearError = () => {
@@ -234,19 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    setIsLoading(true)
-    try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        throw error
-      }
-      setUserState(null)
-    } catch (error) {
-      console.error('Logout error:', error)
-      throw error
-    } finally {
-      setIsLoading(false)
-    }
+    // DEMO MODE: Logout not implemented
+    console.log('[logout] Demo mode - logout bypassed')
   }
 
   const setUser = (newUser: User | null) => {

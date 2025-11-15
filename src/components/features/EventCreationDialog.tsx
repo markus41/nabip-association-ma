@@ -456,3 +456,5 @@ export function EventCreationDialog({
     </Dialog>
   )
 }
+
+export default EventCreationDialog
