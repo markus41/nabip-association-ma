@@ -93,6 +93,45 @@ This Spark is pre-configured and ready to use:
 3. **Create custom reports**: Click "Create Report" to build your own
 4. **Explore dashboards**: Member trends and revenue charts on the main dashboard
 
+## 💻 Development Setup
+
+### Prerequisites
+- **Node.js**: Version 22.19.0 or higher
+
+### Quick Start
+
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Run development server**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:5000](http://localhost:5000) in your browser
+
+3. **Build for production**
+   ```bash
+   npm run build
+   ```
+
+### Troubleshooting
+
+If you encounter build errors, try:
+```bash
+# Remove dependencies and reinstall
+rm -rf node_modules package-lock.json
+npm install
+```
+
+On Windows PowerShell:
+```powershell
+Remove-Item -Recurse -Force node_modules
+Remove-Item -Force package-lock.json
+npm install
+```
+
 ## 📈 Key Metrics Tracked
 
 - Total Members & Growth Rate
