@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Toaster } from '@/components/ui/sonner'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { CommandPalette } from '@/components/features/CommandPalette'
 import { DashboardView } from '@/components/features/DashboardView'
 import { MembersView } from '@/components/features/MembersView'
@@ -13,6 +22,11 @@ import { ChaptersView } from '@/components/features/ChaptersView'
 import { LearningView } from '@/components/features/LearningView'
 import { MemberPortal } from '@/components/features/MemberPortal'
 import { ReportsView } from '@/components/features/ReportsView'
+import { UserManagementView } from '@/components/features/UserManagement'
+import { AuditLogViewer } from '@/components/features/AuditLogViewer'
+import { PermissionGuard } from '@/components/features/PermissionGuard'
+import { AuthProvider, useAuth } from '@/lib/auth/context'
+import { Permission, ROLE_LABELS } from '@/lib/rbac/permissions'
 import {
   ChartBar,
   UserCircle,
@@ -23,7 +37,11 @@ import {
   Command,
   GraduationCap,
   FileText,
-  House
+  House,
+  Users,
+  ClipboardText,
+  SignOut,
+  CaretDown
 } from '@phosphor-icons/react'
 import {
   generateMembers,
@@ -36,16 +54,18 @@ import {
   generateReports,
   calculateDashboardStats
 } from '@/lib/data-utils'
-import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report } from '@/lib/types'
+import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report, User } from '@/lib/types'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 
-type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal'
+type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal' | 'users' | 'audit'
 
-function App() {
+function AppContent() {
+  const { user, updateUserRole, switchUser, logout } = useAuth()
   const [currentView, setCurrentView] = useState<View>('dashboard')
   const [isLoading, setIsLoading] = useState(true)
   const [showEventCreationDialog, setShowEventCreationDialog] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
   
   const [members, setMembers] = useKV<Member[]>('ams-members', [])
   const [chapters, setChapters] = useKV<Chapter[]>('ams-chapters', [])
@@ -55,6 +75,7 @@ function App() {
   const [courses, setCourses] = useKV<Course[]>('ams-courses', [])
   const [enrollments, setEnrollments] = useKV<Enrollment[]>('ams-enrollments', [])
   const [reports, setReports] = useKV<Report[]>('ams-reports', [])
+  const [users, setUsers] = useKV<User[]>('ams-users', [])
   
   const [stats, setStats] = useState<DashboardStats>({
     totalMembers: 0,
@@ -110,6 +131,52 @@ function App() {
       if (!reports || reports.length === 0) {
         const newReports = generateReports(20)
         setReports(newReports)
+      }
+      
+      // Initialize users if empty
+      if (!users || users.length === 0) {
+        const mockUsers: User[] = [
+          {
+            id: 'user-admin-1',
+            email: 'admin@nabip.org',
+            firstName: 'Admin',
+            lastName: 'User',
+            role: 'admin',
+            status: 'active',
+            createdAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
+            lastLoginAt: new Date().toISOString(),
+          },
+          {
+            id: 'user-manager-1',
+            email: 'manager@nabip.org',
+            firstName: 'Manager',
+            lastName: 'Smith',
+            role: 'manager',
+            status: 'active',
+            createdAt: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString(),
+            lastLoginAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+          {
+            id: 'user-member-1',
+            email: 'member@nabip.org',
+            firstName: 'John',
+            lastName: 'Doe',
+            role: 'member',
+            status: 'active',
+            createdAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString(),
+            lastLoginAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+          {
+            id: 'user-guest-1',
+            email: 'guest@example.com',
+            firstName: 'Guest',
+            lastName: 'User',
+            role: 'guest',
+            status: 'active',
+            createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          },
+        ]
+        setUsers(mockUsers)
       }
       
       setTimeout(() => setIsLoading(false), 500)
@@ -177,6 +244,27 @@ function App() {
     })
   }
 
+  const handleUpdateUser = (userId: string, updates: Partial<User>) => {
+    setUsers((prevUsers) =>
+      prevUsers.map((u) => (u.id === userId ? { ...u, ...updates } : u))
+    )
+    
+    // Update auth context if role changed
+    if (updates.role) {
+      updateUserRole(userId, updates.role as any)
+    }
+  }
+
+  const handleCreateUser = (userData: Omit<User, 'id'>) => {
+    const newUser: User = {
+      ...userData,
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+    }
+    setUsers([...(users || []), newUser])
+    toast.success('User created successfully')
+  }
+
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: ChartBar },
     { id: 'members', label: 'Members', icon: UserCircle },
@@ -186,7 +274,9 @@ function App() {
     { id: 'chapters', label: 'Chapters', icon: Buildings },
     { id: 'learning', label: 'Learning', icon: GraduationCap },
     { id: 'reports', label: 'Reports', icon: FileText },
-    { id: 'portal', label: 'My Portal', icon: House }
+    { id: 'portal', label: 'My Portal', icon: House },
+    { id: 'users', label: 'User Management', icon: Users, permission: Permission.USER_MANAGE },
+    { id: 'audit', label: 'Audit Logs', icon: ClipboardText, permission: Permission.AUDIT_VIEW }
   ]
 
   const upcomingEvents = (events || [])
@@ -207,22 +297,63 @@ function App() {
             </div>
           </div>
           
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden md:flex items-center gap-2"
-            onClick={() => {
-              const event = new KeyboardEvent('keydown', {
-                key: 'k',
-                metaKey: true,
-                bubbles: true
-              })
-              document.dispatchEvent(event)
-            }}
-          >
-            <Command size={14} weight="bold" />
-            <span className="text-muted-foreground">⌘K</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden md:flex items-center gap-2"
+              onClick={() => {
+                const event = new KeyboardEvent('keydown', {
+                  key: 'k',
+                  metaKey: true,
+                  bubbles: true
+                })
+                document.dispatchEvent(event)
+              }}
+            >
+              <Command size={14} weight="bold" />
+              <span className="text-muted-foreground">⌘K</span>
+            </Button>
+            
+            {user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <div className="hidden md:block text-left">
+                      <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
+                      <Badge variant="outline" className="text-xs">
+                        {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS]}
+                      </Badge>
+                    </div>
+                    <CaretDown size={14} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Switch User (Demo)</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {users && users.map((u) => (
+                    <DropdownMenuItem
+                      key={u.id}
+                      onClick={() => switchUser(u.id)}
+                      disabled={u.id === user.id}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span>{u.firstName} {u.lastName}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS]}
+                        </Badge>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout}>
+                    <SignOut size={16} className="mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
       </header>
 
@@ -232,6 +363,11 @@ function App() {
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = currentView === item.id
+              
+              // Check permission if required
+              if (item.permission && user && !user) {
+                return null
+              }
               
               return (
                 <button
@@ -301,6 +437,20 @@ function App() {
           {currentView === 'portal' && (
             <MemberPortal memberId="current-member-id" />
           )}
+          {currentView === 'users' && (
+            <PermissionGuard permission={Permission.USER_MANAGE}>
+              <UserManagementView
+                users={users || []}
+                onUpdateUser={handleUpdateUser}
+                onCreateUser={handleCreateUser}
+              />
+            </PermissionGuard>
+          )}
+          {currentView === 'audit' && (
+            <PermissionGuard permission={Permission.AUDIT_VIEW}>
+              <AuditLogViewer />
+            </PermissionGuard>
+          )}
         </main>
       </div>
 
@@ -337,6 +487,14 @@ function App() {
       />
       <Toaster />
     </div>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }
 
