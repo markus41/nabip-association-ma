@@ -21,6 +21,7 @@ interface DashboardViewProps {
 
 export function DashboardView({ stats, upcomingEvents, recentTransactions, loading }: DashboardViewProps) {
   const [userName, setUserName] = useState<string>('')
+  const [userRole, setUserRole] = useState<'admin' | 'member' | 'chapter_admin' | 'state_admin'>('member')
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -28,6 +29,9 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
         const user = await window.spark.user()
         if (user) {
           setUserName(user.login)
+          // Establish role-based context from user metadata or default to member
+          // In production, this would come from authentication context or user profile
+          setUserRole('admin') // Default to admin for demo purposes
         }
       } catch (error) {
         console.error('Failed to fetch user:', error)
@@ -150,8 +154,9 @@ export function DashboardView({ stats, upcomingEvents, recentTransactions, loadi
 
   return (
     <div className="space-y-6">
-      <PersonalizedGreeting 
+      <PersonalizedGreeting
         userName={userName}
+        userRole={userRole}
         dailyChanges={dailyChanges}
         loading={loading}
       />

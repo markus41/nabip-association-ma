@@ -31,17 +31,20 @@ import {
 import type { Course, Enrollment } from '@/lib/types'
 import { formatCurrency } from '@/lib/data-utils'
 import { toast } from 'sonner'
+import { CourseCreationDialog } from './CourseCreationDialog'
 
 interface LearningViewProps {
   courses: Course[]
   enrollments: Enrollment[]
   loading?: boolean
+  onAddCourse?: (course: Omit<Course, 'id'>) => void
 }
 
-export function LearningView({ courses, enrollments, loading }: LearningViewProps) {
+export function LearningView({ courses, enrollments, loading, onAddCourse }: LearningViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   const filteredCourses = useMemo(() => {
     return courses.filter(course => {
@@ -85,6 +88,12 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
     })
   }
 
+  const handleCreateCourse = (courseData: Omit<Course, 'id'>) => {
+    if (onAddCourse) {
+      onAddCourse(courseData)
+    }
+  }
+
   const categories = Array.from(new Set(courses.map(c => c.category)))
 
   return (
@@ -96,7 +105,7 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
             Professional development and continuing education
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setShowCreateDialog(true)}>
           <Plus className="mr-2" size={18} weight="bold" />
           Create Course
         </Button>
@@ -351,6 +360,7 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
         )}
       </div>
 
+      {/* Course Details Dialog */}
       <Dialog open={!!selectedCourse} onOpenChange={() => setSelectedCourse(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -442,8 +452,8 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
                     ? 'Enroll Now'
                     : `Enroll for ${formatCurrency(selectedCourse.price)}`}
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="flex-1"
                   onClick={() => handlePreview(selectedCourse)}
                 >
@@ -454,6 +464,13 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Course Creation Dialog */}
+      <CourseCreationDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onCreateCourse={handleCreateCourse}
+      />
     </div>
   )
 }

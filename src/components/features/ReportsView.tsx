@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,7 +40,7 @@ import {
   Eye,
   Warning
 } from '@phosphor-icons/react'
-import type { Report } from '@/lib/types'
+import type { Report, Member, Event, Transaction, Chapter, ReportColumn } from '@/lib/types'
 import { formatDate } from '@/lib/data-utils'
 import { toast } from 'sonner'
 import { ReportBuilder } from './ReportBuilder'
@@ -50,21 +51,47 @@ import {
   CustomPieChart,
 } from './ChartComponents'
 
+interface ReportExecution {
+  reportId: string
+  executedAt: string
+  data: any[]
+  rowCount: number
+}
+
 interface ReportsViewProps {
   reports: Report[]
   onUpdateReports?: (reports: Report[]) => void
   loading?: boolean
+  members?: Member[]
+  events?: Event[]
+  transactions?: Transaction[]
+  chapters?: Chapter[]
 }
 
-export function ReportsView({ reports, onUpdateReports, loading }: ReportsViewProps) {
+export function ReportsView({
+  reports,
+  onUpdateReports,
+  loading,
+  members = [],
+  events = [],
+  transactions = [],
+  chapters = []
+}: ReportsViewProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [builderOpen, setBuilderOpen] = useState(false)
-  const [reportData, setReportData] = useState<any[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const [executionError, setExecutionError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'details' | 'preview'>('details')
+
+  // Persistent report execution cache using useKV
+  const [reportExecutions, setReportExecutions] = useKV<Record<string, ReportExecution>>('ams-report-executions', {})
+
+  // Get cached data for selected report
+  const reportData = selectedReport && reportExecutions[selectedReport.id]
+    ? reportExecutions[selectedReport.id].data
+    : []
 
   // Sync selected report with latest data from reports array
   useEffect(() => {
@@ -109,68 +136,189 @@ export function ReportsView({ reports, onUpdateReports, loading }: ReportsViewPr
     }
   }
 
-  const generateReportData = (report: Report, rowCount: number = 50): any[] => {
-    const data: any[] = []
-
+  /**
+   * Execute report query against real application data
+   * Establishes data retrieval from members, events, transactions, and chapters
+   * to drive measurable insights and support sustainable reporting practices
+   */
+  const executeReportQuery = (report: Report): any[] => {
     if (!report.columns || report.columns.length === 0) {
       throw new Error('Report has no columns configured')
     }
 
     try {
-      for (let i = 0; i < rowCount; i++) {
-        const row: any = { id: i + 1 }
+      const data: any[] = []
 
-        report.columns.forEach(column => {
-          switch (column.type) {
-            case 'string':
-              if (column.field.includes('name') || column.field.includes('Name')) {
-                const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda']
-                const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis']
-                row[column.field] = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`
-              } else if (column.field.includes('email') || column.field.includes('Email')) {
-                row[column.field] = `user${i + 1}@example.com`
-              } else if (column.field.includes('status') || column.field.includes('Status')) {
-                row[column.field] = ['Active', 'Pending', 'Completed'][Math.floor(Math.random() * 3)]
-              } else if (column.field.includes('type') || column.field.includes('Type')) {
-                row[column.field] = ['Individual', 'Organizational', 'Student'][Math.floor(Math.random() * 3)]
-              } else if (column.field.includes('chapter') || column.field.includes('Chapter')) {
-                row[column.field] = ['California', 'Texas', 'Florida', 'New York'][Math.floor(Math.random() * 4)]
-              } else {
-                row[column.field] = `Sample ${column.label}`
-              }
-              break
+      // Determine data source based on column fields
+      const hasMemberFields = report.columns.some(col => col.field.startsWith('member.'))
+      const hasChapterFields = report.columns.some(col => col.field.startsWith('chapter.'))
+      const hasEventFields = report.columns.some(col => col.field.startsWith('event.'))
+      const hasTransactionFields = report.columns.some(col => col.field.startsWith('transaction.'))
 
-            case 'number':
-              if (column.field.includes('amount') || column.field.includes('revenue') || column.field.includes('price')) {
-                row[column.field] = Math.floor(Math.random() * 10000) + 1000
-              } else if (column.field.includes('count') || column.field.includes('Count')) {
-                row[column.field] = Math.floor(Math.random() * 100) + 1
-              } else if (column.field.includes('score') || column.field.includes('Score')) {
-                row[column.field] = Math.floor(Math.random() * 100)
-              } else {
-                row[column.field] = Math.floor(Math.random() * 1000)
-              }
-              break
+      // Primary data source selection
+      let primarySource: any[] = []
+      if (hasMemberFields) {
+        primarySource = members
+      } else if (hasEventFields) {
+        primarySource = events
+      } else if (hasTransactionFields) {
+        primarySource = transactions
+      } else if (hasChapterFields) {
+        primarySource = chapters
+      }
 
-            case 'date':
-              const randomDate = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000)
-              row[column.field] = randomDate.toLocaleDateString()
-              break
+      if (primarySource.length === 0) {
+        throw new Error('No data available for this report configuration')
+      }
 
-            default:
-              row[column.field] = `Data ${i + 1}`
+      // Build result set from primary source
+      primarySource.forEach((item, index) => {
+        const row: any = { id: index + 1 }
+
+        report.columns?.forEach(column => {
+          const [entityType, fieldName] = column.field.split('.')
+
+          if (entityType === 'member' && 'firstName' in item) {
+            const member = item as Member
+            switch (fieldName) {
+              case 'firstName':
+                row[column.field] = member.firstName
+                break
+              case 'lastName':
+                row[column.field] = member.lastName
+                break
+              case 'email':
+                row[column.field] = member.email
+                break
+              case 'memberType':
+                row[column.field] = member.memberType
+                break
+              case 'status':
+                row[column.field] = member.status
+                break
+              case 'joinedDate':
+                row[column.field] = formatDate(member.joinedDate)
+                break
+              case 'expiryDate':
+                row[column.field] = formatDate(member.expiryDate)
+                break
+              case 'engagementScore':
+                row[column.field] = member.engagementScore
+                break
+              default:
+                row[column.field] = '-'
+            }
+          } else if (entityType === 'chapter' && 'type' in item && item.type !== undefined) {
+            const chapter = item as Chapter
+            switch (fieldName) {
+              case 'name':
+                row[column.field] = chapter.name
+                break
+              case 'type':
+                row[column.field] = chapter.type
+                break
+              case 'region':
+                row[column.field] = chapter.region || chapter.state || '-'
+                break
+              default:
+                row[column.field] = '-'
+            }
+          } else if (entityType === 'event' && 'capacity' in item) {
+            const event = item as Event
+            switch (fieldName) {
+              case 'name':
+                row[column.field] = event.name
+                break
+              case 'startDate':
+                row[column.field] = formatDate(event.startDate)
+                break
+              case 'registeredCount':
+                row[column.field] = event.registeredCount
+                break
+              default:
+                row[column.field] = '-'
+            }
+          } else if (entityType === 'transaction' && 'amount' in item) {
+            const transaction = item as Transaction
+            switch (fieldName) {
+              case 'amount':
+                row[column.field] = transaction.amount
+                break
+              case 'type':
+                row[column.field] = transaction.type
+                break
+              case 'date':
+                row[column.field] = formatDate(transaction.date)
+                break
+              default:
+                row[column.field] = '-'
+            }
           }
         })
 
         data.push(row)
-      }
+      })
 
-      return data
+      // Apply aggregations if specified
+      const aggregatedData = applyAggregations(data, report.columns)
+
+      return aggregatedData
     } catch (error) {
-      throw new Error(`Failed to generate report data: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error(`Failed to execute report query: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
+  /**
+   * Apply aggregation functions to report data
+   * Streamlines data analysis by computing sum, average, count, min, max
+   */
+  const applyAggregations = (data: any[], columns: ReportColumn[]): any[] => {
+    const aggregateColumns = columns.filter(col => col.aggregate)
+
+    if (aggregateColumns.length === 0) {
+      return data
+    }
+
+    // Group data if aggregations are present
+    const result: any = { id: 1 }
+
+    columns.forEach(column => {
+      if (column.aggregate && column.type === 'number') {
+        const values = data.map(row => row[column.field]).filter(v => typeof v === 'number')
+
+        switch (column.aggregate) {
+          case 'sum':
+            result[column.field] = values.reduce((acc, val) => acc + val, 0)
+            break
+          case 'avg':
+            result[column.field] = values.length > 0 ? values.reduce((acc, val) => acc + val, 0) / values.length : 0
+            break
+          case 'count':
+            result[column.field] = values.length
+            break
+          case 'min':
+            result[column.field] = values.length > 0 ? Math.min(...values) : 0
+            break
+          case 'max':
+            result[column.field] = values.length > 0 ? Math.max(...values) : 0
+            break
+        }
+      } else if (!column.aggregate && data.length > 0) {
+        // For non-aggregate columns, take first value or count
+        result[column.field] = data[0][column.field] || `${data.length} rows`
+      }
+    })
+
+    return aggregateColumns.length > 0 && aggregateColumns.length === columns.filter(c => c.type === 'number').length
+      ? [result]
+      : data
+  }
+
+  /**
+   * Execute report and cache results
+   * Establishes persistent report execution tracking to minimize recomputation
+   * and streamline report access with sustained performance
+   */
   const handleRunReport = async (report: Report) => {
     if (!report.columns || report.columns.length === 0) {
       toast.error('Cannot run report', {
@@ -183,22 +331,31 @@ export function ReportsView({ reports, onUpdateReports, loading }: ReportsViewPr
     setExecutionError(null)
 
     toast.info(`Running report: ${report.name}`, {
-      description: 'Generating report data...'
+      description: 'Executing query against application data...'
     })
 
-    // Simulate report generation delay
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
     try {
-      // Generate actual report data
-      const data = generateReportData(report, 50)
-      setReportData(data)
+      // Execute query against real data
+      const data = executeReportQuery(report)
+
+      // Cache execution results with useKV for persistence
+      const execution: ReportExecution = {
+        reportId: report.id,
+        executedAt: new Date().toISOString(),
+        data,
+        rowCount: data.length
+      }
+
+      setReportExecutions({
+        ...reportExecutions,
+        [report.id]: execution
+      })
 
       // Update the report's last run date
       if (onUpdateReports) {
         const updatedReports = reports.map(r =>
           r.id === report.id
-            ? { ...r, lastRunDate: new Date().toISOString() }
+            ? { ...r, lastRunDate: execution.executedAt }
             : r
         )
         onUpdateReports(updatedReports)
@@ -208,7 +365,7 @@ export function ReportsView({ reports, onUpdateReports, loading }: ReportsViewPr
       setActiveTab('preview')
 
       toast.success(`Report completed: ${report.name}`, {
-        description: `Generated ${data.length} rows of data.`
+        description: `Generated ${data.length} rows of data. Results cached for quick access.`
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
@@ -222,6 +379,11 @@ export function ReportsView({ reports, onUpdateReports, loading }: ReportsViewPr
     }
   }
 
+  /**
+   * Export report data to various formats
+   * Streamlines data extraction and external analysis capabilities
+   * Supports CSV, Excel-compatible format, and structured data export
+   */
   const handleExportReport = (report: Report, format: string) => {
     if (reportData.length === 0) {
       toast.error('No data to export', {
@@ -231,15 +393,105 @@ export function ReportsView({ reports, onUpdateReports, loading }: ReportsViewPr
     }
 
     try {
-      // Simulate export - in production, this would call actual export service
-      toast.success(`Exporting to ${format.toUpperCase()}`, {
-        description: 'Your download will start shortly.'
+      if (format === 'csv' || format === 'excel') {
+        exportToCSV(report, reportData)
+      } else if (format === 'pdf') {
+        exportToPDF(report, reportData)
+      }
+
+      toast.success(`Export complete: ${format.toUpperCase()}`, {
+        description: `${reportData.length} rows exported successfully.`
       })
     } catch (error) {
       toast.error('Export failed', {
         description: error instanceof Error ? error.message : 'Unknown error occurred'
       })
     }
+  }
+
+  /**
+   * Generate and download CSV file from report data
+   * Establishes downloadable data format for external processing
+   */
+  const exportToCSV = (report: Report, data: any[]) => {
+    if (!report.columns || report.columns.length === 0) {
+      throw new Error('No columns defined for export')
+    }
+
+    // Build CSV header
+    const headers = ['ID', ...report.columns.map(col => col.label)]
+    const csvRows = [headers.join(',')]
+
+    // Build CSV data rows
+    data.forEach(row => {
+      const values = [
+        row.id,
+        ...report.columns!.map(col => {
+          const value = row[col.field]
+          // Escape commas and quotes in CSV
+          if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+            return `"${value.replace(/"/g, '""')}"`
+          }
+          return value ?? ''
+        })
+      ]
+      csvRows.push(values.join(','))
+    })
+
+    // Create and download file
+    const csvContent = csvRows.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${report.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+  }
+
+  /**
+   * Generate and download PDF-style structured data
+   * Establishes printable report format for documentation and sharing
+   */
+  const exportToPDF = (report: Report, data: any[]) => {
+    // For now, export as formatted text that can be saved as PDF
+    // In production, this would use a PDF generation library like jsPDF
+    const lines = [
+      `NABIP Association Management System`,
+      `Report: ${report.name}`,
+      `Category: ${report.category}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Total Rows: ${data.length}`,
+      '',
+      '='.repeat(80),
+      ''
+    ]
+
+    if (report.columns) {
+      // Add column headers
+      const headers = ['ID', ...report.columns.map(col => col.label)]
+      lines.push(headers.join(' | '))
+      lines.push('-'.repeat(80))
+
+      // Add data rows (limited to first 100 for PDF)
+      data.slice(0, 100).forEach(row => {
+        const values = [
+          String(row.id).padEnd(8),
+          ...report.columns!.map(col => String(row[col.field] ?? '-').padEnd(15))
+        ]
+        lines.push(values.join(' | '))
+      })
+
+      if (data.length > 100) {
+        lines.push('')
+        lines.push(`... and ${data.length - 100} more rows`)
+      }
+    }
+
+    const content = lines.join('\n')
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${report.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.txt`
+    link.click()
   }
 
   const categories = ['membership', 'financial', 'events', 'engagement', 'custom']
@@ -519,8 +771,7 @@ export function ReportsView({ reports, onUpdateReports, loading }: ReportsViewPr
                       className="cursor-pointer"
                       onClick={() => {
                         setSelectedReport(report)
-                        setActiveTab('details')
-                        setReportData([])
+                        setActiveTab(reportExecutions[report.id] ? 'preview' : 'details')
                         setExecutionError(null)
                       }}
                     >
@@ -587,8 +838,8 @@ export function ReportsView({ reports, onUpdateReports, loading }: ReportsViewPr
         if (!open) {
           setSelectedReport(null)
           setActiveTab('details')
-          setReportData([])
           setExecutionError(null)
+          // Note: reportData is now cached in useKV, so we don't clear it
         }
       }}>
         <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">

@@ -170,16 +170,19 @@ export function CustomBarChart({
       {description && <p className="text-xs text-muted-foreground mb-3">{description}</p>}
       <div className="w-full h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data}>
+          <BarChart data={data} layout="horizontal">
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.90 0.01 250)" />
             <XAxis
-              dataKey={xAxisKey}
+              type="number"
               tick={{ fontSize: 11, fill: 'oklch(0.50 0.02 250)' }}
               stroke="oklch(0.90 0.01 250)"
             />
             <YAxis
+              type="category"
+              dataKey={xAxisKey}
               tick={{ fontSize: 11, fill: 'oklch(0.50 0.02 250)' }}
               stroke="oklch(0.90 0.01 250)"
+              width={150}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend
@@ -193,7 +196,7 @@ export function CustomBarChart({
                 name={bar.name || bar.dataKey}
                 fill={bar.color || defaultColors[index % defaultColors.length]}
                 stackId={stacked ? 'stack' : undefined}
-                radius={[4, 4, 0, 0]}
+                radius={[0, 4, 4, 0]}
               />
             ))}
           </BarChart>

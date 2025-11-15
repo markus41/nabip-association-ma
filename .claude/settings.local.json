@@ -36,7 +36,19 @@
       "Bash(npm install:*)",
       "Bash(npm run dev:*)",
       "Bash(cat:*)",
-      "mcp__supabase__apply_migration"
+      "mcp__supabase__apply_migration",
+      "mcp__notion__notion-create-database",
+      "mcp__notion__notion-create-pages",
+      "Bash(npm run type-check:*)",
+      "Bash(npx tsc:*)",
+      "mcp__notion__notion-search",
+      "Bash(npm run:*)",
+      "Bash(git log:*)",
+      "mcp__github__search_issues",
+      "Bash(gh issue list:*)",
+      "Bash(python:*)",
+      "Bash(del \"C:\\Users\\MarkusAhling\\.claude\\CLAUDE.md\")",
+      "Bash(npx vite:*)"
     ],
     "deny": [],
     "ask": []

@@ -7,7 +7,7 @@ import { DashboardView } from '@/components/features/DashboardView'
 import { MembersView } from '@/components/features/MembersView'
 import { EventsView } from '@/components/features/EventsView'
 import { EventCreationDialog } from '@/components/features/EventCreationDialog'
-import { CommunicationsView } from '@/components/features/CommunicationsView'
+import { EmailCampaignsView } from '@/components/features/EmailCampaignsView'
 import { FinanceView } from '@/components/features/FinanceView'
 import { ChaptersView } from '@/components/features/ChaptersView'
 import { LearningView } from '@/components/features/LearningView'
@@ -36,7 +36,9 @@ import {
   generateReports,
   calculateDashboardStats
 } from '@/lib/data-utils'
-import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Course, Enrollment, Report } from '@/lib/types'
+import type { Member, Chapter, Event, Transaction, DashboardStats, Course, Enrollment, Report } from '@/lib/types'
+import type { EmailCampaign, EmailTemplate } from '@/lib/email-types'
+import { emailTemplates } from '@/lib/email-templates'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -51,7 +53,8 @@ function App() {
   const [chapters, setChapters] = useKV<Chapter[]>('ams-chapters', [])
   const [events, setEvents] = useKV<Event[]>('ams-events', [])
   const [transactions, setTransactions] = useKV<Transaction[]>('ams-transactions', [])
-  const [campaigns, setCampaigns] = useKV<Campaign[]>('ams-campaigns', [])
+  const [emailCampaigns, setEmailCampaigns] = useKV<EmailCampaign[]>('ams-email-campaigns', [])
+  const [templates] = useKV<EmailTemplate[]>('ams-email-templates', emailTemplates)
   const [courses, setCourses] = useKV<Course[]>('ams-courses', [])
   const [enrollments, setEnrollments] = useKV<Enrollment[]>('ams-enrollments', [])
   const [reports, setReports] = useKV<Report[]>('ams-reports', [])
@@ -93,10 +96,7 @@ function App() {
         setTransactions(newTransactions)
       }
       
-      if (!campaigns || campaigns.length === 0) {
-        const newCampaigns = generateCampaigns(15)
-        setCampaigns(newCampaigns)
-      }
+      // Email campaigns initialization removed - will be created via wizard
       
       if (!courses || courses.length === 0) {
         const newCourses = generateCourses(12)
@@ -171,10 +171,121 @@ function App() {
     })
   }
 
-  const handleNewCampaign = () => {
-    toast.success('New Campaign', {
-      description: 'Campaign builder would open here.'
-    })
+  /**
+   * Establish comprehensive campaign creation workflow to streamline
+   * member communications across NABIP's hierarchical structure.
+   *
+   * Validates required fields, generates unique IDs, initializes metrics,
+   * and persists to useKV state with proper error handling.
+   */
+  const handleCreateCampaign = (campaignData: Partial<EmailCampaign>) => {
+    try {
+      // Validation: Ensure required fields are present
+      if (!campaignData.name || !campaignData.subject || !campaignData.templateId) {
+        toast.error('Campaign Creation Failed', {
+          description: 'Please complete all required fields: name, subject, and template.',
+        })
+        return
+      }
+
+      // Generate unique campaign ID and timestamp
+      const now = new Date().toISOString()
+      const campaignId = `camp-${uuidv4()}`
+
+      // Initialize comprehensive campaign metrics for tracking
+      const defaultMetrics = {
+        sent: 0,
+        delivered: 0,
+        opened: 0,
+        clicked: 0,
+        bounced: 0,
+        spamReports: 0,
+        unsubscribed: 0,
+        deliveryRate: 0,
+        openRate: 0,
+        clickRate: 0,
+        clickToOpenRate: 0,
+        bounceRate: 0,
+        unsubscribeRate: 0,
+        uniqueOpens: 0,
+        uniqueClicks: 0,
+        totalOpens: 0,
+        totalClicks: 0,
+      }
+
+      // Construct complete campaign object with all required fields
+      const newCampaign: EmailCampaign = {
+        id: campaignId,
+        name: campaignData.name,
+        templateId: campaignData.templateId,
+        subject: campaignData.subject,
+        previewText: campaignData.previewText || '',
+        fromName: campaignData.fromName || 'NABIP',
+        fromEmail: campaignData.fromEmail || 'noreply@nabip.org',
+        replyTo: campaignData.replyTo || 'support@nabip.org',
+
+        // Segmentation configuration
+        segmentRules: campaignData.segmentRules || [],
+        estimatedRecipients: campaignData.estimatedRecipients || 0,
+        actualRecipients: undefined,
+
+        // Scheduling details
+        scheduleType: campaignData.scheduleType || 'immediate',
+        scheduledAt: campaignData.scheduledAt,
+        timezone: campaignData.timezone,
+        recurringConfig: undefined,
+
+        // A/B Testing configuration
+        abTestEnabled: campaignData.abTestEnabled || false,
+        abTestConfig: campaignData.abTestConfig,
+        winningVariant: undefined,
+
+        // Campaign status and timing
+        status: campaignData.status || 'draft',
+        sentAt: campaignData.status === 'sending' ? now : undefined,
+        completedAt: undefined,
+
+        // Performance tracking
+        metrics: defaultMetrics,
+
+        // Metadata for audit trail
+        createdAt: now,
+        updatedAt: now,
+        createdBy: 'current-user', // TODO: Replace with actual user ID from auth
+        tags: campaignData.tags || [],
+        notes: campaignData.notes,
+      }
+
+      // Persist campaign to state
+      setEmailCampaigns([...(emailCampaigns || []), newCampaign])
+
+      // Success feedback with campaign details
+      toast.success('Campaign Created Successfully', {
+        description: `${newCampaign.name} ${
+          newCampaign.status === 'scheduled'
+            ? `scheduled for ${new Date(newCampaign.scheduledAt!).toLocaleDateString()}`
+            : newCampaign.status === 'sending'
+            ? 'is now sending'
+            : 'saved as draft'
+        }`,
+      })
+
+      // Log creation event for debugging and analytics
+      console.log('[Campaign Created]', {
+        id: campaignId,
+        name: newCampaign.name,
+        status: newCampaign.status,
+        recipients: newCampaign.estimatedRecipients,
+        template: newCampaign.templateId,
+        timestamp: now,
+      })
+    } catch (error) {
+      // Comprehensive error handling with user-friendly messaging
+      console.error('[Campaign Creation Error]', error)
+      toast.error('Campaign Creation Failed', {
+        description: 'An unexpected error occurred. Please try again or contact support.',
+      })
+    }
   }
 
   const navItems = [
@@ -276,9 +387,11 @@ function App() {
             />
           )}
           {currentView === 'communications' && (
-            <CommunicationsView
-              campaigns={campaigns || []}
-              onNewCampaign={handleNewCampaign}
+            <EmailCampaignsView
+              campaigns={emailCampaigns || []}
+              templates={templates || []}
+              members={members || []}
+              onCreateCampaign={handleCreateCampaign}
               loading={isLoading}
             />
           )}
@@ -293,6 +406,13 @@ function App() {
               courses={courses || []}
               enrollments={enrollments || []}
               loading={isLoading}
+              onAddCourse={(courseData) => {
+                const newCourse: Course = {
+                  id: uuidv4(),
+                  ...courseData,
+                }
+                setCourses([...(courses || []), newCourse])
+              }}
             />
           )}
           {currentView === 'reports' && (
@@ -300,6 +420,10 @@ function App() {
               reports={reports || []}
               onUpdateReports={setReports}
               loading={isLoading}
+              members={members || []}
+              events={events || []}
+              transactions={transactions || []}
+              chapters={chapters || []}
             />
           )}
           {currentView === 'portal' && (
