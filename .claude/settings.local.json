@@ -6,7 +6,13 @@
       "Bash(dir /a \"C:\\Users\\MarkusAhling\\nabip-ams-alpha\\nabip-association-ma\")",
       "Bash(powershell -Command:*)",
       "Bash([ -f .claude/mcp.json ])",
-      "Bash([ -f .claude/settings.json ])"
+      "Bash([ -f .claude/settings.json ])",
+      "Bash([ -f .claude/hooks.mjs ])",
+      "Bash(tree:*)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

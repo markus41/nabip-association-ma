@@ -1,0 +1,96 @@
+name: Issue Management & Triage
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  auto-label:
+    name: Auto-Label Issues
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+
+    steps:
+      - name: Auto-label based on content
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title.toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+            const text = title + ' ' + body;
+
+            let labels = [];
+
+            // Type detection
+            if (text.includes('bug') || text.includes('error') || text.includes('broken')) {
+              labels.push('type:bug');
+            } else if (text.includes('feature') || text.includes('enhancement') || text.includes('add')) {
+              labels.push('type:feature');
+            } else if (text.includes('documentation') || text.includes('docs')) {
+              labels.push('type:docs');
+            } else if (text.includes('question') || text.includes('how to')) {
+              labels.push('type:question');
+            }
+
+            // Priority detection
+            if (text.includes('critical') || text.includes('urgent') || text.includes('blocker')) {
+              labels.push('priority:high');
+            } else if (text.includes('important')) {
+              labels.push('priority:medium');
+            }
+
+            // Area detection
+            if (text.includes('ci') || text.includes('workflow') || text.includes('action')) {
+              labels.push('area:ci-cd');
+            } else if (text.includes('security') || text.includes('vulnerability')) {
+              labels.push('area:security');
+            } else if (text.includes('performance') || text.includes('slow')) {
+              labels.push('area:performance');
+            } else if (text.includes('accessibility') || text.includes('a11y')) {
+              labels.push('area:accessibility');
+            }
+
+            // Apply labels
+            if (labels.length > 0) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  labels: labels
+                });
+              } catch (error) {
+                console.log('Some labels may not exist:', error.message);
+              }
+            }
+
+      - name: Welcome new contributors
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+
+            // Check if this is the user's first issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              creator: issue.user.login,
+              state: 'all'
+            });
+
+            if (issues.length === 1) {
+              const message = `👋 Welcome @${issue.user.login}!\n\nThank you for opening your first issue in this repository. A maintainer will review your issue and provide feedback soon.\n\nIn the meantime, please ensure you've provided:\n- A clear description of the issue\n- Steps to reproduce (for bugs)\n- Expected vs. actual behavior\n- Any relevant screenshots or logs\n\n---\n*Automated by Issue Management*`;
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: message
+              });
+            }

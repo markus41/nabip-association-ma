@@ -1,0 +1,175 @@
+name: Changelog Generator
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      since_tag:
+        description: 'Generate changelog since this tag (leave empty for last tag)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  generate-changelog:
+    name: Generate Changelog
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+
+            // Determine since reference
+            let sinceRef = '${{ github.event.inputs.since_tag }}';
+            if (!sinceRef) {
+              try {
+                sinceRef = execSync('git describe --tags --abbrev=0', { encoding: 'utf8' }).trim();
+              } catch (e) {
+                sinceRef = '';
+              }
+            }
+
+            // Get commits
+            let gitLog;
+            if (sinceRef) {
+              gitLog = execSync(`git log ${sinceRef}..HEAD --pretty=format:"%h|%s|%an|%ad" --date=short`, { encoding: 'utf8' });
+            } else {
+              gitLog = execSync('git log --pretty=format:"%h|%s|%an|%ad" --date=short --max-count=50', { encoding: 'utf8' });
+            }
+
+            const commits = gitLog.split('\n').filter(line => line.trim());
+
+            // Categorize commits by conventional commit type
+            const categories = {
+              '✨ Features': [],
+              '🐛 Bug Fixes': [],
+              '📝 Documentation': [],
+              '♻️ Refactoring': [],
+              '⚡ Performance': [],
+              '✅ Tests': [],
+              '🔧 Chores': [],
+              '👷 CI/CD': [],
+              '💄 Styles': [],
+              '📦 Other': []
+            };
+
+            for (const commit of commits) {
+              const [hash, subject, author, date] = commit.split('|');
+              const entry = `- [\`${hash}\`] ${subject.replace(/^(feat|fix|docs|style|refactor|perf|test|chore|ci)(\(.+?\))?:\s*/, '')} (@${author})`;
+
+              if (subject.startsWith('feat')) {
+                categories['✨ Features'].push(entry);
+              } else if (subject.startsWith('fix')) {
+                categories['🐛 Bug Fixes'].push(entry);
+              } else if (subject.startsWith('docs')) {
+                categories['📝 Documentation'].push(entry);
+              } else if (subject.startsWith('refactor')) {
+                categories['♻️ Refactoring'].push(entry);
+              } else if (subject.startsWith('perf')) {
+                categories['⚡ Performance'].push(entry);
+              } else if (subject.startsWith('test')) {
+                categories['✅ Tests'].push(entry);
+              } else if (subject.startsWith('chore')) {
+                categories['🔧 Chores'].push(entry);
+              } else if (subject.startsWith('ci')) {
+                categories['👷 CI/CD'].push(entry);
+              } else if (subject.startsWith('style')) {
+                categories['💄 Styles'].push(entry);
+              } else {
+                categories['📦 Other'].push(entry);
+              }
+            }
+
+            // Generate changelog markdown
+            const date = new Date().toISOString().split('T')[0];
+            let changelog = `# Changelog\n\nAll notable changes to this project will be documented in this file.\n\n`;
+            changelog += `## [Unreleased] - ${date}\n\n`;
+
+            for (const [category, entries] of Object.entries(categories)) {
+              if (entries.length > 0) {
+                changelog += `### ${category}\n\n`;
+                for (const entry of entries) {
+                  changelog += `${entry}\n`;
+                }
+                changelog += `\n`;
+              }
+            }
+
+            changelog += `---\n\n`;
+            changelog += `**Full Changelog**: https://github.com/${context.repo.owner}/${context.repo.repo}/compare/${sinceRef}...HEAD\n`;
+
+            // Write changelog
+            const fs = require('fs');
+            let existingChangelog = '';
+            try {
+              existingChangelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+            } catch (e) {
+              // File doesn't exist, will create new
+            }
+
+            // If changelog exists, preserve history
+            if (existingChangelog && !existingChangelog.includes('[Unreleased]')) {
+              // Add new section at the top, after the header
+              const headerEnd = existingChangelog.indexOf('\n\n') + 2;
+              const header = existingChangelog.substring(0, headerEnd);
+              const rest = existingChangelog.substring(headerEnd);
+              changelog = header + changelog.split('\n\n').slice(1).join('\n\n') + rest;
+            }
+
+            fs.writeFileSync('CHANGELOG.md', changelog);
+            console.log('Changelog generated successfully');
+
+            return { generated: true, commits: commits.length };
+
+      - name: Commit changelog
+        if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if ! git diff --quiet CHANGELOG.md; then
+            git add CHANGELOG.md
+            git commit -m "docs: Update CHANGELOG.md [skip ci]
+
+🤖 Generated with Claude Code
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+            git push
+            echo "✅ Changelog committed and pushed"
+          else
+            echo "ℹ️ No changes to CHANGELOG.md"
+          fi
+        continue-on-error: true
+
+      - name: Create release notes comment
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+
+            // Extract the unreleased section
+            const unreleasedMatch = changelog.match(/## \[Unreleased\][\s\S]*?(?=##|$)/);
+            const releaseNotes = unreleasedMatch ? unreleasedMatch[0] : 'No changes documented.';
+
+            console.log('Release notes for', context.ref);
+            console.log(releaseNotes);
+
+            // Could create a GitHub release here if desired
+            // await github.rest.repos.createRelease({...})
