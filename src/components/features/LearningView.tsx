@@ -31,6 +31,7 @@ import {
 import type { Course, Enrollment } from '@/lib/types'
 import { formatCurrency } from '@/lib/data-utils'
 import { toast } from 'sonner'
+import { CreateCourseModal } from './CreateCourseModal'
 
 interface LearningViewProps {
   courses: Course[]
@@ -42,6 +43,7 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   const filteredCourses = useMemo(() => {
     return courses.filter(course => {
@@ -90,7 +92,7 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
             Professional development and continuing education
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setIsCreateModalOpen(true)}>
           <Plus className="mr-2" size={18} weight="bold" />
           Create Course
         </Button>
@@ -444,6 +446,11 @@ export function LearningView({ courses, enrollments, loading }: LearningViewProp
           )}
         </DialogContent>
       </Dialog>
+
+      <CreateCourseModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+      />
     </div>
   )
 }
