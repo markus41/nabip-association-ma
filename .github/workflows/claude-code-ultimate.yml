@@ -130,8 +130,6 @@ jobs:
           # Advanced configuration
           claude_args: |
             --allowed-tools Bash(*),Editor(*),Browser(*)
-            --max-iterations 50
-            --model claude-sonnet-4-20250514
             --verbose
       
       - name: Label based on Claude's analysis
