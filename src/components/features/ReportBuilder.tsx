@@ -136,7 +136,7 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ChartBar size={24} weight="duotone" />

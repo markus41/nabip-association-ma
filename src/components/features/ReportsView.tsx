@@ -36,7 +36,8 @@ import {
   MagnifyingGlass,
   Clock,
   ChartLine,
-  ChartPie
+  ChartPie,
+  Eye
 } from '@phosphor-icons/react'
 import type { Report } from '@/lib/types'
 import { formatDate } from '@/lib/data-utils'
@@ -425,125 +426,195 @@ export function ReportsView({ reports, loading }: ReportsViewProps) {
       </Tabs>
 
       <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{selectedReport?.name}</DialogTitle>
             <DialogDescription>Report details and configuration</DialogDescription>
           </DialogHeader>
           {selectedReport && (
-            <div className="space-y-6 overflow-y-auto pr-2">
-              <div>
-                <Badge variant="outline" className="capitalize mb-3">
-                  {selectedReport.category}
-                </Badge>
-                <p className="text-muted-foreground">{selectedReport.description}</p>
-              </div>
+            <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
+              <TabsList className="shrink-0">
+                <TabsTrigger value="details" className="gap-2">
+                  <FileText size={16} />
+                  Details
+                </TabsTrigger>
+                <TabsTrigger value="preview" className="gap-2">
+                  <Eye size={16} />
+                  Web View
+                </TabsTrigger>
+              </TabsList>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-muted/30">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                    Created By
-                  </p>
-                  <p className="font-medium">{selectedReport.createdBy}</p>
-                </div>
+              <TabsContent value="details" className="flex-1 overflow-y-auto pr-2 mt-4">
+                <div className="space-y-6">
+                  <div>
+                    <Badge variant="outline" className="capitalize mb-3">
+                      {selectedReport.category}
+                    </Badge>
+                    <p className="text-muted-foreground">{selectedReport.description}</p>
+                  </div>
 
-                <div className="p-4 rounded-lg bg-muted/30">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                    Created Date
-                  </p>
-                  <p className="font-medium">{formatDate(selectedReport.createdDate)}</p>
-                </div>
-
-                <div className="p-4 rounded-lg bg-muted/30">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                    Last Run
-                  </p>
-                  <p className="font-medium">
-                    {selectedReport.lastRunDate
-                      ? formatDate(selectedReport.lastRunDate)
-                      : 'Never'}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg bg-muted/30">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                    Visibility
-                  </p>
-                  <p className="font-medium">{selectedReport.isPublic ? 'Public' : 'Private'}</p>
-                </div>
-              </div>
-
-              {selectedReport.schedule && (
-                <div className="p-4 rounded-lg border">
-                  <h4 className="font-semibold mb-3">Schedule Configuration</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Frequency</span>
-                      <span className="font-medium capitalize">
-                        {selectedReport.schedule.frequency}
-                      </span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-lg bg-muted/30">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Created By
+                      </p>
+                      <p className="font-medium">{selectedReport.createdBy}</p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Time</span>
-                      <span className="font-medium">{selectedReport.schedule.time}</span>
+
+                    <div className="p-4 rounded-lg bg-muted/30">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Created Date
+                      </p>
+                      <p className="font-medium">{formatDate(selectedReport.createdDate)}</p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Recipients</span>
-                      <span className="font-medium">
-                        {selectedReport.schedule.recipients.length} users
-                      </span>
+
+                    <div className="p-4 rounded-lg bg-muted/30">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Last Run
+                      </p>
+                      <p className="font-medium">
+                        {selectedReport.lastRunDate
+                          ? formatDate(selectedReport.lastRunDate)
+                          : 'Never'}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-lg bg-muted/30">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                        Visibility
+                      </p>
+                      <p className="font-medium">{selectedReport.isPublic ? 'Public' : 'Private'}</p>
                     </div>
                   </div>
-                </div>
-              )}
 
-              {selectedReport.columns && selectedReport.columns.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-2">Report Columns</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {selectedReport.columns.map((column, idx) => (
-                      <div
-                        key={idx}
-                        className="text-sm p-2 rounded bg-muted/30 flex items-center justify-between"
-                      >
-                        <span>{column.label}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {column.type}
-                        </Badge>
+                  {selectedReport.schedule && (
+                    <div className="p-4 rounded-lg border">
+                      <h4 className="font-semibold mb-3">Schedule Configuration</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Frequency</span>
+                          <span className="font-medium capitalize">
+                            {selectedReport.schedule.frequency}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Time</span>
+                          <span className="font-medium">{selectedReport.schedule.time}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Recipients</span>
+                          <span className="font-medium">
+                            {selectedReport.schedule.recipients.length} users
+                          </span>
+                        </div>
                       </div>
-                    ))}
+                    </div>
+                  )}
+
+                  {selectedReport.columns && selectedReport.columns.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Report Columns</h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {selectedReport.columns.map((column, idx) => (
+                          <div
+                            key={idx}
+                            className="text-sm p-2 rounded bg-muted/30 flex items-center justify-between"
+                          >
+                            <span>{column.label}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {column.type}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="preview" className="flex-1 overflow-y-auto pr-2 mt-4">
+                <div className="space-y-4">
+                  <div className="rounded-lg border bg-card p-6">
+                    <div className="mb-6">
+                      <h2 className="text-2xl font-semibold mb-2">{selectedReport.name}</h2>
+                      <p className="text-muted-foreground">{selectedReport.description}</p>
+                      <div className="flex items-center gap-2 mt-3">
+                        <Badge variant="outline" className="capitalize">
+                          {selectedReport.category}
+                        </Badge>
+                        {selectedReport.isPublic && (
+                          <Badge variant="outline" className="bg-teal/10 text-teal border-teal/20">
+                            Public
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          {selectedReport.columns?.slice(0, 5).map((col, idx) => (
+                            <TableHead key={idx}>{col.label}</TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Array.from({ length: 10 }).map((_, rowIdx) => (
+                          <TableRow key={rowIdx}>
+                            <TableCell className="font-medium">#{rowIdx + 1}</TableCell>
+                            {selectedReport.columns?.slice(0, 5).map((col, colIdx) => (
+                              <TableCell key={colIdx}>
+                                {col.type === 'number'
+                                  ? Math.floor(Math.random() * 1000)
+                                  : col.type === 'date'
+                                  ? new Date(Date.now() - Math.random() * 10000000000).toLocaleDateString()
+                                  : `Sample ${col.label}`}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    <div className="mt-4 text-sm text-muted-foreground">
+                      Showing 10 sample rows. Run report to see actual data.
+                    </div>
                   </div>
                 </div>
-              )}
+              </TabsContent>
 
-              <div className="flex gap-2 sticky bottom-0 bg-background pt-4">
-                <Button className="flex-1" onClick={() => handleRunReport(selectedReport)}>
-                  <Play className="mr-2" size={18} />
-                  Run Report
+              <div className="flex flex-wrap gap-2 pt-4 border-t shrink-0 mt-4">
+                <Button className="flex-1 min-w-[140px]" onClick={() => handleRunReport(selectedReport)}>
+                  <Play size={18} weight="bold" />
+                  <span className="ml-2">Run Report</span>
                 </Button>
                 <Button
                   variant="outline"
+                  className="flex-1 min-w-[100px]"
                   onClick={() => handleExportReport(selectedReport, 'csv')}
                 >
-                  <Download className="mr-2" size={18} />
-                  CSV
+                  <Download size={18} />
+                  <span className="ml-2">CSV</span>
                 </Button>
                 <Button
                   variant="outline"
+                  className="flex-1 min-w-[100px]"
                   onClick={() => handleExportReport(selectedReport, 'excel')}
                 >
-                  <Download className="mr-2" size={18} />
-                  Excel
+                  <Download size={18} />
+                  <span className="ml-2">Excel</span>
                 </Button>
                 <Button
                   variant="outline"
+                  className="flex-1 min-w-[100px]"
                   onClick={() => handleExportReport(selectedReport, 'pdf')}
                 >
-                  <Download className="mr-2" size={18} />
-                  PDF
+                  <Download size={18} />
+                  <span className="ml-2">PDF</span>
                 </Button>
               </div>
-            </div>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
