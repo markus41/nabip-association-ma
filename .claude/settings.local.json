@@ -15,9 +15,23 @@
       "Bash(git push:*)",
       "Bash(git branch:*)",
       "WebFetch(domain:www.notion.so)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "WebFetch(domain:api.githubcopilot.com)",
+      "WebSearch",
+      "WebFetch(domain:docs.github.com)",
+      "WebFetch(domain:github.blog)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh --version:*)",
+      "Bash(curl:*)",
+      "Bash(nul)",
+      "mcp__notion__notion-fetch",
+      "mcp__notion__notion-update-page"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }
