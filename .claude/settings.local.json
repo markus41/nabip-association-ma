@@ -12,7 +12,10 @@
       "Bash(git pull:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git branch:*)",
+      "WebFetch(domain:www.notion.so)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
