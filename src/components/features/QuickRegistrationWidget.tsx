@@ -1,34 +1,34 @@
 import { useState, useMemo } from 'react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import {
   Select,
-  SelectContent,
   SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  Select
 import {
-  Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
+  DialogHeade
+} from '@/compon
   UserPlus,
-  MagnifyingGlass,
   Users,
-  CheckCircle,
-  ListChecks,
-  CalendarDots,
+  ListCh
   Ticket
-} from '@phosphor-icons/react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'sonner'
-import type { Event, Member } from '@/lib/types'
+import { motion,
+import type { Event,
+interface Quick
+  members: Mem
+  similarEvents?: Event[]
+
+  event,
+  onRegister,
+}: Quick
+  const [searc
+  const [sele
+
+  const 
+
+    if (!searchQuery) return []
+    return members
+        `${m.firstName} ${m.lastName}`.toLowerCa
 
 interface QuickRegistrationWidgetProps {
   event: Event
@@ -62,70 +62,70 @@ export function QuickRegistrationWidget({
         m.email.toLowerCase().includes(query)
       )
       .slice(0, 5)
-  }, [members, searchQuery])
-
-  const availableTickets = event.ticketTypes.filter(
-    ticket => ticket.sold < ticket.capacity
-  )
-
-  const handleRegister = () => {
-    if (!selectedMember || !selectedTicketType) return
-
-    onRegister(selectedMember.id, selectedTicketType)
-    setRegistrationComplete(true)
-
-    setTimeout(() => {
-      setIsOpen(false)
-      setRegistrationComplete(false)
-      setSearchQuery('')
-      setSelectedMember(null)
-      setSelectedTicketType('')
-      toast.success('Registration Complete', {
-        description: `${selectedMember.firstName} ${selectedMember.lastName} has been registered.`
-      })
-    }, 1500)
-  }
-
-  const getAvailabilityColor = () => {
-    if (availabilityPercentage <= 10) return 'text-red-600 bg-red-50'
-    if (availabilityPercentage <= 30) return 'text-amber-600 bg-amber-50'
-    return 'text-green-600 bg-green-50'
-  }
-
-  return (
-    <>
       <Button
-        size="sm"
-        onClick={(e) => {
-          e.stopPropagation()
+
           setIsOpen(true)
-        }}
-        disabled={isFull && !event.waitlistCount}
-        className="w-full"
-      >
-        <UserPlus size={16} className="mr-2" />
-        {isFull ? 'Join Waitlist' : 'Quick Register'}
-      </Button>
+        disabled={isFull && !event.waitlist
+   
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+
         <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Quick Registration</DialogTitle>
-            <DialogDescription>{event.name}</DialogDescription>
-          </DialogHeader>
 
-          <AnimatePresence mode="wait">
-            {registrationComplete ? (
-              <motion.div
-                key="success"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                className="py-12 flex flex-col items-center justify-center"
+          </DialogHeader>
+          <AnimatePresence mode="
+
+                initia
+                exit={
               >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
+                  initia
+                  transition=
+                >
+                </motion.div>
+                <p className="text-sm text-muted-foreground mt-1">Confirmation email sent</p>
+        
+            
+   
+
+                <div
+                    availabilityPercentage <= 10
+                      : availabilityPercentage <= 30
+                      : 'border-green-2
+   
+
+          
+      
+             
+                 
+                      ini
+                      transit
+                        a
+          
+                          : 'bg-green-600'
+                    />
+       
+                      {availabilityPercentage <
+                        : '⏰ Limited seats remaining'
+               
+
+                  <Card className="p-4 bg-amber-50 bo
+                      <div className="w-10 h
+                      </
+                        <p className="font-semibold text-amber-900">Event Ful
+                          {event.waitlistCount} {event.waitlist
+                        <
+
+                )}
+                <div className="space
+                  <div cl
+                      classNa
+                    />
+                      placeholder="Type name or em
+                      onChange={(e) =
+                    />
+
+                    <div cl
+                        <div className="
+                        </div>
                   transition={{ type: 'spring', duration: 0.5 }}
                   className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4"
                 >
@@ -254,84 +254,84 @@ export function QuickRegistrationWidget({
                     className="space-y-2"
                   >
                     <label className="text-sm font-medium">Select Ticket Type</label>
-                    <Select value={selectedTicketType} onValueChange={setSelectedTicketType}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose ticket type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableTickets.map((ticket) => (
-                          <SelectItem key={ticket.id} value={ticket.id}>
-                            <div className="flex items-center justify-between gap-4">
-                              <span>{ticket.name}</span>
-                              <span className="text-muted-foreground font-mono">
-                                ${ticket.price.toFixed(2)}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </motion.div>
-                )}
 
-                {isFull && similarEvents.length > 0 && (
-                  <Card className="p-4 bg-muted/50">
-                    <div className="flex items-start gap-3 mb-3">
-                      <Ticket size={20} weight="duotone" className="text-primary mt-1" />
-                      <div>
-                        <p className="font-semibold text-sm">Similar Events Available</p>
-                        <p className="text-xs text-muted-foreground">Consider these alternatives</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {similarEvents.slice(0, 3).map((similarEvent) => (
-                        <button
-                          key={similarEvent.id}
-                          className="w-full p-3 rounded-lg border bg-card hover:bg-accent transition-colors text-left group"
-                        >
-                          <div className="flex items-start gap-3">
-                            <CalendarDots
-                              size={20}
-                              weight="duotone"
-                              className="text-primary mt-0.5"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium group-hover:text-primary transition-colors truncate">
-                                {similarEvent.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {new Date(similarEvent.startDate).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </Card>
-                )}
 
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsOpen(false)}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleRegister}
-                    disabled={!selectedMember || !selectedTicketType}
-                    className="flex-1"
-                  >
-                    <CheckCircle size={18} className="mr-2" />
-                    Confirm Registration
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </DialogContent>
-      </Dialog>
-    </>
-  )
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
