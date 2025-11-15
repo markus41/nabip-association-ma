@@ -12,6 +12,13 @@ Create an enterprise-grade Association Management System (AMS) for NABIP that me
 
 ## Essential Features
 
+### Personalized Dashboard with Smart Notifications
+- **Functionality**: Time-aware greeting with user's name, daily change summary, contextual alerts based on data trends, visual trend indicators on stats, and color-coded event urgency display
+- **Purpose**: Transforms passive data display into an actionable intelligence center that proactively surfaces issues requiring attention
+- **Trigger**: Default view on login or clicking "Dashboard" in navigation
+- **Progression**: Personalized greeting loads with user's name → Daily changes displayed (new members, registrations, revenue) → Smart notifications analyze data for issues (low renewal rate, expiring memberships, low event registration) → User clicks action buttons to address concerns → Stats cards show visual trend indicators (green up arrows, red down arrows) → Upcoming events display with progress bars and color-coded urgency → Charts and recent activity provide deeper context
+- **Success criteria**: Users immediately see what requires attention, trend indicators accurately reflect positive/negative changes, action buttons provide direct paths to resolution, event urgency colors match timeframes (red for this week, yellow for next week, green for later)
+
 ### Member Management Dashboard
 - **Functionality**: Centralized view and management of 20,000+ members across national, state, and local chapters with filtering, search, and bulk operations
 - **Purpose**: Provides the single source of truth for member data, eliminating fragmented spreadsheets and disconnected systems
