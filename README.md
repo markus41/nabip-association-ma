@@ -121,6 +121,26 @@ This Spark is pre-configured and ready to use:
 - GDPR/CCPA ready
 - Secure payment handling
 
+## 🗺️ Roadmap & Feature Requests
+
+We have three major feature request initiatives planned:
+
+### 1. Core Functionality Fixes (Priority: Critical)
+Fixing broken core features including Add Member, Campaign Creation, Course Creation, Event Workflow, Reports, and Member Portal Login. See [Feature Request #1](FEATURE_REQUESTS_AND_AGENT_ASSIGNMENTS.md#feature-request-1-core-functionality-fixes) for details.
+
+### 2. Chapter Management Enhancement (Priority: High)
+Comprehensive improvements including bulk operations, hierarchy visualization, sparkline analytics, export tools, and comparison features. See [Feature Request #2](FEATURE_REQUESTS_AND_AGENT_ASSIGNMENTS.md#feature-request-2-chapter-management-system-enhancement) for details.
+
+### 3. Role-Based Access Control (RBAC) System (Priority: High)
+Implementing four-tier RBAC with Member, Chapter Admin, State Admin, and National Admin views, plus comprehensive permission management and audit logging. See [Feature Request #3](FEATURE_REQUESTS_AND_AGENT_ASSIGNMENTS.md#feature-request-3-role-based-access-control-rbac-system) for details.
+
+**Total Sub-Issues**: 36 detailed tasks across all feature requests
+
+For complete documentation, issue creation scripts, and custom agent assignments, see:
+- [`FEATURE_REQUESTS_AND_AGENT_ASSIGNMENTS.md`](FEATURE_REQUESTS_AND_AGENT_ASSIGNMENTS.md) - Complete feature request documentation
+- [`feature-requests-data.json`](feature-requests-data.json) - Structured JSON data
+- [`.github/scripts/README.md`](.github/scripts/README.md) - Issue creation guide
+
 ## 📱 Mobile Responsive
 
 Fully optimized for:

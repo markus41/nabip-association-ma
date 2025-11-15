@@ -1,0 +1,412 @@
+{
+  "feature_requests": [
+    {
+      "id": 1,
+      "title": "[Feature]: Fix Critical Non-Functional Core Features",
+      "category": "Bug/Enhancement",
+      "priority": "Critical",
+      "labels": ["enhancement", "feature-request", "priority:critical"],
+      "problem_statement": "Multiple core features are completely non-functional in the current system. The 'Add Member' button, campaign creation, course creation, event workflow, report execution, and member portal login are all broken. This blocks all user workflows and makes the system unusable.",
+      "proposed_solution": "Systematically repair each broken feature by debugging frontend event handlers, verifying backend endpoints, testing workflows end-to-end, and implementing proper error handling and user feedback.",
+      "expected_impact": {
+        "severity": "Critical - System is unusable without these fixes",
+        "users_affected": "All users (members, admins, chapter leaders)",
+        "estimated_time": "2-3 weeks",
+        "risk": "System cannot be deployed"
+      },
+      "sub_issues": [
+        {
+          "number": 1,
+          "title": "[Sub-Issue]: Fix Add Member Button",
+          "description": "The Add Member button doesn't work at all. Need to verify the onClick handler is attached, check if the API endpoint exists, ensure the modal component loads, and add proper form validation and error handling so admins can actually add new members to the system.",
+          "agents": ["feature-completion-specialist"],
+          "labels": ["enhancement", "sub-feature", "agent:feature-completion-specialist"],
+          "tasks": [
+            "Verify onClick handler is attached to Add Member button",
+            "Check if the API endpoint exists and is functional",
+            "Ensure the modal component loads correctly",
+            "Add proper form validation",
+            "Implement error handling and user feedback",
+            "Test end-to-end workflow"
+          ]
+        },
+        {
+          "number": 2,
+          "title": "[Sub-Issue]: Fix New Campaign Creation",
+          "description": "Campaign creation workflow is completely broken. Need to verify the campaign form component exists, check routing is configured, ensure the API endpoint works, implement the rich text editor for email content, and add proper validation so marketing teams can create email campaigns.",
+          "agents": ["feature-completion-specialist"],
+          "labels": ["enhancement", "sub-feature", "agent:feature-completion-specialist"],
+          "tasks": [
+            "Verify campaign form component exists",
+            "Check routing is configured correctly",
+            "Ensure API endpoint works",
+            "Implement rich text editor for email content",
+            "Add proper validation",
+            "Test complete campaign creation workflow"
+          ]
+        },
+        {
+          "number": 3,
+          "title": "[Sub-Issue]: Fix Create Course Button",
+          "description": "Create Course button is non-functional. Need to build the course creation wizard, implement file upload for course materials, add the rich text editor for descriptions, create the module/lesson structure, and enable draft saving so admins can add new courses to the learning platform.",
+          "agents": ["feature-completion-specialist"],
+          "labels": ["enhancement", "sub-feature", "agent:feature-completion-specialist"],
+          "tasks": [
+            "Build course creation wizard",
+            "Implement file upload for course materials",
+            "Add rich text editor for descriptions",
+            "Create module/lesson structure",
+            "Enable draft saving functionality",
+            "Test complete course creation workflow"
+          ]
+        },
+        {
+          "number": 4,
+          "title": "[Sub-Issue]: Fix Course Preview",
+          "description": "Course preview doesn't display anything. Need to create the preview component, implement video player for lessons, add PDF viewer for documents, show course outline and metadata, and ensure the preview works so members can see course content before enrolling.",
+          "agents": ["react-component-architect"],
+          "labels": ["enhancement", "sub-feature", "agent:react-component-architect"],
+          "tasks": [
+            "Create the preview component",
+            "Implement video player for lessons",
+            "Add PDF viewer for documents",
+            "Show course outline and metadata",
+            "Ensure preview works correctly",
+            "Add accessibility features"
+          ]
+        },
+        {
+          "number": 5,
+          "title": "[Sub-Issue]: Implement Member Portal Login",
+          "description": "There's no login mechanism at all for the member portal. Need to build the login page, implement authentication with JWT tokens, create password reset workflow, add session management, implement rate limiting for security, and create the member dashboard landing page.",
+          "agents": ["form-validation-architect", "integration-api-specialist"],
+          "labels": ["enhancement", "sub-feature", "agent:form-validation-architect", "agent:integration-api-specialist"],
+          "tasks": [
+            "Build the login page with form validation",
+            "Implement authentication with JWT tokens",
+            "Create password reset workflow",
+            "Add session management",
+            "Implement rate limiting for security",
+            "Create member dashboard landing page",
+            "Add proper error handling and feedback"
+          ]
+        },
+        {
+          "number": 6,
+          "title": "[Sub-Issue]: Fix Event Creation Workflow",
+          "description": "Event creation is broken. Need to build the event creation form with all fields (date/time, location, virtual options, registration settings, pricing), implement the rich text editor for descriptions, add image upload for event banners, and enable event publishing so admins can create conferences and meetings.",
+          "agents": ["form-validation-architect", "feature-completion-specialist"],
+          "labels": ["enhancement", "sub-feature", "agent:form-validation-architect", "agent:feature-completion-specialist"],
+          "tasks": [
+            "Build event creation form with all required fields",
+            "Implement form validation",
+            "Add rich text editor for descriptions",
+            "Implement image upload for event banners",
+            "Enable event publishing functionality",
+            "Test complete workflow"
+          ]
+        },
+        {
+          "number": 7,
+          "title": "[Sub-Issue]: Fix Run Report Functionality",
+          "description": "The Run Report button doesn't execute reports. Need to fix the report execution engine, implement parameter selection UI, add report preview, enable CSV/Excel/PDF exports, implement progress indicators for large reports, and add scheduled report delivery.",
+          "agents": ["dashboard-analytics-engineer"],
+          "labels": ["enhancement", "sub-feature", "agent:dashboard-analytics-engineer"],
+          "tasks": [
+            "Fix report execution engine",
+            "Implement parameter selection UI",
+            "Add report preview functionality",
+            "Enable CSV/Excel/PDF exports",
+            "Implement progress indicators for large reports",
+            "Add scheduled report delivery",
+            "Test various report types"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "[Feature]: Comprehensive Chapter Management Improvements",
+      "category": "Navigation/UI Enhancement",
+      "priority": "High",
+      "labels": ["enhancement", "feature-request", "priority:high"],
+      "problem_statement": "Chapter management is limited to grid view only. Cannot create or edit chapters outside the grid, no bulk operations, no hierarchy visualization, and no comparison tools. This severely constrains administrative efficiency.",
+      "proposed_solution": "Create dedicated chapter creation/editing interfaces, implement bulk operations, build visual hierarchy tree showing national→state→chapter relationships, add enhanced chapter cards with metrics and sparklines, and create comparison tools.",
+      "expected_impact": {
+        "priority": "High",
+        "users_affected": "National admins, state admins, chapter leaders",
+        "estimated_time": "3-4 weeks",
+        "efficiency_gain": "Reduces chapter management time by ~60%"
+      },
+      "sub_issues": [
+        {
+          "number": 8,
+          "title": "[Sub-Issue]: Add Chapter Creation Form Outside Grid",
+          "description": "Create a dedicated 'Create Chapter' page with full form including basic info, location, contact details, leadership assignments, and branding. Also add a quick-create modal option for simple chapters.",
+          "agents": ["form-validation-architect"],
+          "labels": ["enhancement", "sub-feature", "agent:form-validation-architect"]
+        },
+        {
+          "number": 9,
+          "title": "[Sub-Issue]: Enable Chapter Editing Outside Grid",
+          "description": "Build both a quick-edit modal for minor changes and a full-page editor with tabbed interface for comprehensive updates. Add change tracking, version history, and a 'Duplicate Chapter' feature.",
+          "agents": ["form-validation-architect"],
+          "labels": ["enhancement", "sub-feature", "agent:form-validation-architect"]
+        },
+        {
+          "number": 10,
+          "title": "[Sub-Issue]: Add Bulk Chapter Operations",
+          "description": "Add checkboxes to chapter list, create bulk action toolbar, and implement operations like bulk status changes, bulk delete, bulk assignment of leaders, bulk export, and bulk messaging to chapter leaders.",
+          "agents": ["administrative-workflow-agent"],
+          "labels": ["enhancement", "sub-feature", "agent:administrative-workflow-agent"]
+        },
+        {
+          "number": 11,
+          "title": "[Sub-Issue]: Implement Chapter Hierarchy Visualization",
+          "description": "Create an interactive tree view showing National → State → Chapter relationships. Use expand/collapse nodes, show member counts at each level, add drag-and-drop for reorganization.",
+          "agents": ["react-component-architect"],
+          "labels": ["enhancement", "sub-feature", "agent:react-component-architect"]
+        },
+        {
+          "number": 12,
+          "title": "[Sub-Issue]: Make Chapter Card Metrics Clickable",
+          "description": "Convert all metrics on chapter cards (member count, event count, revenue) into clickable links that drill down to detailed views.",
+          "agents": ["react-component-architect"],
+          "labels": ["enhancement", "sub-feature", "agent:react-component-architect"]
+        },
+        {
+          "number": 13,
+          "title": "[Sub-Issue]: Add Sparkline Graphs to Chapter Cards",
+          "description": "Add small trend graphs (sparklines) to each chapter card showing member growth, event attendance trends, and revenue over the last 12 months.",
+          "agents": ["dashboard-analytics-engineer"],
+          "labels": ["enhancement", "sub-feature", "agent:dashboard-analytics-engineer"]
+        },
+        {
+          "number": 14,
+          "title": "[Sub-Issue]: Add Quick Action Buttons on Chapter Card Hover",
+          "description": "When hovering over a chapter card, show quick action buttons for Edit, View Details, Message Leaders, and Export Data.",
+          "agents": ["react-component-architect"],
+          "labels": ["enhancement", "sub-feature", "agent:react-component-architect"]
+        },
+        {
+          "number": 15,
+          "title": "[Sub-Issue]: Show Comparative Performance Indicators",
+          "description": "Display how each chapter compares to state average and national average for key metrics. Show indicators like '+25% vs state avg' and color-code performance.",
+          "agents": ["dashboard-analytics-engineer"],
+          "labels": ["enhancement", "sub-feature", "agent:dashboard-analytics-engineer"]
+        },
+        {
+          "number": 16,
+          "title": "[Sub-Issue]: Add Chapter Data Export Option",
+          "description": "Add export button to individual chapter cards and detail pages. Allow exporting chapter data to CSV, Excel, or PDF format.",
+          "agents": ["data-management-export-agent"],
+          "labels": ["enhancement", "sub-feature", "agent:data-management-export-agent"]
+        },
+        {
+          "number": 17,
+          "title": "[Sub-Issue]: Enable Chapter Comparison View",
+          "description": "Build a side-by-side comparison interface where admins can select 2-5 chapters and see all metrics compared in a table.",
+          "agents": ["dashboard-analytics-engineer"],
+          "labels": ["enhancement", "sub-feature", "agent:dashboard-analytics-engineer"]
+        },
+        {
+          "number": 18,
+          "title": "[Sub-Issue]: Fix Inconsistent Performance Indicators",
+          "description": "Standardize the color coding across all chapter displays. Use consistent colors for statuses and ensure all performance badges follow the same design pattern.",
+          "agents": ["react-component-architect"],
+          "labels": ["enhancement", "sub-feature", "agent:react-component-architect"]
+        },
+        {
+          "number": 19,
+          "title": "[Sub-Issue]: Add Context to Top Performer Section",
+          "description": "Add context like time period, comparison baseline, specific metric that made them top performer, and show runner-up chapters.",
+          "agents": ["dashboard-analytics-engineer"],
+          "labels": ["enhancement", "sub-feature", "agent:dashboard-analytics-engineer"]
+        },
+        {
+          "number": 20,
+          "title": "[Sub-Issue]: Show Contact Details in Chapter Section",
+          "description": "Display primary contact name, email, and phone number directly in the chapter listing and cards.",
+          "agents": ["react-component-architect"],
+          "labels": ["enhancement", "sub-feature", "agent:react-component-architect"]
+        },
+        {
+          "number": 21,
+          "title": "[Sub-Issue]: Implement Chapter Comparison Tools",
+          "description": "Build filtering and sorting tools for chapter comparison. Allow filtering by state, size, performance level, and sorting by any metric.",
+          "agents": ["data-management-export-agent"],
+          "labels": ["enhancement", "sub-feature", "agent:data-management-export-agent"]
+        },
+        {
+          "number": 22,
+          "title": "[Sub-Issue]: Add Direct Messaging to Chapter Leaders",
+          "description": "Add 'Message Leader' button that opens email compose or internal messaging directly to chapter president/contact.",
+          "agents": ["notification-communication-agent"],
+          "labels": ["enhancement", "sub-feature", "agent:notification-communication-agent"]
+        },
+        {
+          "number": 23,
+          "title": "[Sub-Issue]: Add Action Buttons to Hierarchy Table",
+          "description": "In the chapter hierarchy table view, add action buttons to each row for common tasks like Edit, View Members, View Events, View Financials, and Message Leaders.",
+          "agents": ["react-component-architect"],
+          "labels": ["enhancement", "sub-feature", "agent:react-component-architect"]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "[Feature]: Implement Comprehensive RBAC with Hierarchical Permissions",
+      "category": "Security/Navigation Enhancement",
+      "priority": "High",
+      "labels": ["enhancement", "feature-request", "priority:high", "security"],
+      "problem_statement": "The system has zero role-based access control. All users see the same interface regardless of role. This creates security risks, compliance violations, cluttered UX, and prevents proper administrative delegation.",
+      "proposed_solution": "Implement four-tier RBAC system: Member view (limited access), Chapter Admin view (chapter-specific), State Admin view (state-wide), and National Admin view (full access). Include permission management interface and audit logging.",
+      "expected_impact": {
+        "priority": "High - Critical for security and compliance",
+        "users_affected": "All 17,000+ users",
+        "estimated_time": "4-5 weeks",
+        "benefit": "Enables proper data segregation and delegation"
+      },
+      "sub_issues": [
+        {
+          "number": 24,
+          "title": "[Sub-Issue]: Implement Member View",
+          "description": "Create simplified interface for standard members showing only personal profile, event registration, course enrollment, and member directory. Hide all administrative functions.",
+          "agents": ["navigation-accessibility-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "agent:navigation-accessibility-agent"]
+        },
+        {
+          "number": 25,
+          "title": "[Sub-Issue]: Create Chapter Admin View",
+          "description": "Build interface for chapter leaders showing their chapter's member list, events, finances, and reports. Allow them to manage only their chapter's data.",
+          "agents": ["navigation-accessibility-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "agent:navigation-accessibility-agent"]
+        },
+        {
+          "number": 26,
+          "title": "[Sub-Issue]: Build State Admin View",
+          "description": "Create state-level administrator interface with access to all chapters within their state, state-wide reporting, cross-chapter analytics, and ability to approve chapter requests.",
+          "agents": ["navigation-accessibility-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "agent:navigation-accessibility-agent"]
+        },
+        {
+          "number": 27,
+          "title": "[Sub-Issue]: Design National Admin View",
+          "description": "Build full system access interface for national staff including all states, all chapters, system configuration, user management, integration settings, and organization-wide reporting.",
+          "agents": ["navigation-accessibility-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "agent:navigation-accessibility-agent"]
+        },
+        {
+          "number": 28,
+          "title": "[Sub-Issue]: Add Permission Management Interface",
+          "description": "Create admin interface for assigning and revoking roles. Include user search, role assignment workflow, permission preview, temporary role elevation, and bulk role assignment.",
+          "agents": ["administrative-workflow-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "agent:administrative-workflow-agent"]
+        },
+        {
+          "number": 29,
+          "title": "[Sub-Issue]: Create Role Assignment Workflow",
+          "description": "Implement approval workflow for role assignments. Route requests to appropriate approver, send notification, track approval status, and log all changes.",
+          "agents": ["administrative-workflow-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "agent:administrative-workflow-agent"]
+        },
+        {
+          "number": 30,
+          "title": "[Sub-Issue]: Implement GDPR Compliance Tools",
+          "description": "Add right to be forgotten (data deletion), data export for user requests, consent tracking, data retention policies, and privacy preference center.",
+          "agents": ["administrative-workflow-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "compliance", "agent:administrative-workflow-agent"]
+        },
+        {
+          "number": 31,
+          "title": "[Sub-Issue]: Build Audit Log Viewer",
+          "description": "Create interface for viewing all permission changes, role assignments, access attempts, and administrative actions. Include filtering and export capabilities.",
+          "agents": ["administrative-workflow-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "agent:administrative-workflow-agent"]
+        },
+        {
+          "number": 32,
+          "title": "[Sub-Issue]: Add IP Restriction Settings",
+          "description": "Allow setting IP address restrictions per role or user. For example, only allow national admin access from office IP addresses.",
+          "agents": ["administrative-workflow-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "agent:administrative-workflow-agent"]
+        },
+        {
+          "number": 33,
+          "title": "[Sub-Issue]: Implement Session Management",
+          "description": "Build ability to view all active user sessions, force logout of specific users or sessions, see login history, set session timeout periods, and detect concurrent login attempts.",
+          "agents": ["administrative-workflow-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "agent:administrative-workflow-agent"]
+        },
+        {
+          "number": 34,
+          "title": "[Sub-Issue]: Configure Data Retention Policies",
+          "description": "Create interface for setting how long different types of data are retained. For example, keep member data for 7 years, event data for 5 years, per legal requirements.",
+          "agents": ["administrative-workflow-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "compliance", "agent:administrative-workflow-agent"]
+        },
+        {
+          "number": 35,
+          "title": "[Sub-Issue]: Create Privacy Preference Center",
+          "description": "Build member-facing interface where users can control privacy settings, opt in/out of communications, control data sharing, and manage consent preferences.",
+          "agents": ["form-validation-architect"],
+          "labels": ["enhancement", "sub-feature", "privacy", "agent:form-validation-architect"]
+        },
+        {
+          "number": 36,
+          "title": "[Sub-Issue]: Add Terms Acceptance Tracking",
+          "description": "Implement system to track when users accept terms of service, privacy policy, and other agreements. Show version history and require re-acceptance when terms change.",
+          "agents": ["administrative-workflow-agent"],
+          "labels": ["enhancement", "sub-feature", "security", "compliance", "agent:administrative-workflow-agent"]
+        }
+      ]
+    }
+  ],
+  "agent_summary": {
+    "administrative-workflow-agent": {
+      "issues": [10, 28, 29, 30, 31, 32, 33, 34, 36],
+      "count": 9,
+      "description": "Implements administrative workflows including RBAC permissions, approval processes, bulk operations, and audit logging"
+    },
+    "dashboard-analytics-engineer": {
+      "issues": [7, 13, 15, 17, 19],
+      "count": 5,
+      "description": "Builds data visualization dashboards with interactive analytics, real-time updates, and export capabilities"
+    },
+    "data-management-export-agent": {
+      "issues": [16, 21],
+      "count": 2,
+      "description": "Implements advanced data filtering, search, sorting, and export functionality"
+    },
+    "feature-completion-specialist": {
+      "issues": [1, 2, 3, 6],
+      "count": 4,
+      "description": "Transforms incomplete features into production-ready implementations"
+    },
+    "form-validation-architect": {
+      "issues": [5, 6, 8, 9, 35],
+      "count": 5,
+      "description": "Establishes comprehensive form validation architecture using React Hook Form and Zod"
+    },
+    "integration-api-specialist": {
+      "issues": [5],
+      "count": 1,
+      "description": "Establishes scalable API integration architecture for external services"
+    },
+    "navigation-accessibility-agent": {
+      "issues": [24, 25, 26, 27],
+      "count": 4,
+      "description": "Ensures WCAG 2.1 AA compliance through keyboard navigation, focus management, ARIA attributes"
+    },
+    "notification-communication-agent": {
+      "issues": [22],
+      "count": 1,
+      "description": "Implements comprehensive notification system with real-time updates"
+    },
+    "react-component-architect": {
+      "issues": [4, 11, 12, 14, 18, 20, 23],
+      "count": 7,
+      "description": "React 19 component architecture specialist for scalable, accessible components"
+    }
+  }
+}
