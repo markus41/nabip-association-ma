@@ -282,6 +282,7 @@ export function ReportBuilder({ open, onClose, onSave }: ReportBuilderProps) {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleRemoveColumn(col.field)}
+                          className="shrink-0 h-8 w-8 p-0"
                         >
                           <X size={14} />
                         </Button>
