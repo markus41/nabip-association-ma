@@ -2,35 +2,33 @@ import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
   SelectItem,
+  SelectTrigger,
   SelectValue,
+} from '@/components/ui/select'
 import {
+  Dialog,
   DialogContent,
-  Dialog
-} from '@
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
-  Ticket,
-  MagnifyingGla
+  UserPlus,
+  MagnifyingGlass,
+  Users,
+  CheckCircle,
   ListChecks,
-  CalendarDots
-import type { Event, Member, TicketType } f
-import {
-
-  event: 
-  onRegister: 
-}
-export f
-  members,
-  similarE
-  const [isOpe
-  const [selectedMember, setSe
-  const [registrationComplete, setRegistrationComplete] = us
-  const isFull = event.registeredCount >= event.c
-  const availabilityPercentage
+  CalendarDots,
+  Ticket
+} from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { toast } from 'sonner'
+import type { Event, Member } from '@/lib/types'
 
 interface QuickRegistrationWidgetProps {
   event: Event
@@ -254,92 +252,86 @@ export function QuickRegistrationWidget({
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-2"
-                {is
-                    <div className="flex items-start gap-3 mb-3">
-                      <div>
-                        <p className=
-                        </p>
-                    </div>
-                      {similarEvents.
-                          key={similarEvent.id}
-                        >
-                            <CalendarDots
-                              weight="duotone"
-                            />
-                              <p className="text-sm font-medium group-hover:text
-                              </p>
-                                {new Da
-                              </p>
-                          </div>
-                      ))}
-                  </Card>
-
-                  <Button
-                    onClick={
                   >
-                  
+                    <label className="text-sm font-medium">Select Ticket Type</label>
+                    <Select value={selectedTicketType} onValueChange={setSelectedTicketType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose ticket type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableTickets.map((ticket) => (
+                          <SelectItem key={ticket.id} value={ticket.id}>
+                            <div className="flex items-center justify-between gap-4">
+                              <span>{ticket.name}</span>
+                              <span className="text-muted-foreground font-mono">
+                                ${ticket.price.toFixed(2)}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </motion.div>
+                )}
 
+                {isFull && similarEvents.length > 0 && (
+                  <Card className="p-4 bg-muted/50">
+                    <div className="flex items-start gap-3 mb-3">
+                      <Ticket size={20} weight="duotone" className="text-primary mt-1" />
+                      <div>
+                        <p className="font-semibold text-sm">Similar Events Available</p>
+                        <p className="text-xs text-muted-foreground">Consider these alternatives</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {similarEvents.slice(0, 3).map((similarEvent) => (
+                        <button
+                          key={similarEvent.id}
+                          className="w-full p-3 rounded-lg border bg-card hover:bg-accent transition-colors text-left group"
+                        >
+                          <div className="flex items-start gap-3">
+                            <CalendarDots
+                              size={20}
+                              weight="duotone"
+                              className="text-primary mt-0.5"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium group-hover:text-primary transition-colors truncate">
+                                {similarEvent.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {new Date(similarEvent.startDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsOpen(false)}
                     className="flex-1"
-                    <CheckCircle size={18} className="mr-2" />
+                  >
+                    Cancel
                   </Button>
+                  <Button
+                    onClick={handleRegister}
+                    disabled={!selectedMember || !selectedTicketType}
+                    className="flex-1"
+                  >
+                    <CheckCircle size={18} className="mr-2" />
+                    Confirm Registration
+                  </Button>
+                </div>
               </motion.div>
-          </AnimatePresence
+            )}
+          </AnimatePresence>
+        </DialogContent>
       </Dialog>
+    </>
   )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}
