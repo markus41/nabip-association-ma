@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import { MemberLoginDialog } from './MemberLoginDialog'
 import {
   UserCircle,
   EnvelopeSimple,
@@ -16,20 +17,61 @@ import {
   CreditCard,
   Certificate,
   Bell,
-  Lock
+  SignOut
 } from '@phosphor-icons/react'
-import type { Member, Credential } from '@/lib/types'
+import type { Member } from '@/lib/types'
 import { formatDate } from '@/lib/data-utils'
 import { toast } from 'sonner'
 
 interface MemberPortalProps {
-  memberId: string
+  members: Member[]
 }
 
-export function MemberPortal({ memberId }: MemberPortalProps) {
-  const [currentMember, setCurrentMember] = useKV<Member | null>('current-member', null)
+export function MemberPortal({ members }: MemberPortalProps) {
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-
+  
+  // Storage state management - works in both Spark and local environments
+  const [localStoredMember, setLocalStoredMember] = useState<Member | null>(() => {
+    try {
+      const stored = localStorage.getItem('portal-logged-in-member')
+      return stored ? JSON.parse(stored) : null
+    } catch {
+      return null
+    }
+  })
+  
+  // Try to use KV storage if available (Spark environment)
+  let kvMember: Member | null = null
+  let setKvMember: ((member: Member | null) => void) | null = null
+  
+  try {
+    const [kvValue, kvSetter] = useKV<Member | null>('portal-logged-in-member', null)
+    kvMember = kvValue ?? null
+    setKvMember = kvSetter
+  } catch {
+    // KV not available, will use localStorage
+  }
+  
+  // Use KV if available, otherwise use localStorage
+  const currentMember = setKvMember ? kvMember : localStoredMember
+  const setCurrentMember = (member: Member | null) => {
+    if (setKvMember) {
+      setKvMember(member)
+    } else {
+      setLocalStoredMember(member)
+      try {
+        if (member) {
+          localStorage.setItem('portal-logged-in-member', JSON.stringify(member))
+        } else {
+          localStorage.removeItem('portal-logged-in-member')
+        }
+      } catch (error) {
+        console.error('Failed to update localStorage:', error)
+      }
+    }
+  }
+  
   const [formData, setFormData] = useState({
     firstName: currentMember?.firstName || '',
     lastName: currentMember?.lastName || '',
@@ -46,6 +88,36 @@ export function MemberPortal({ memberId }: MemberPortalProps) {
     eventReminders: currentMember?.preferences?.eventReminders ?? true,
     marketingEmails: currentMember?.preferences?.marketingEmails ?? true
   })
+
+  // Update form data when currentMember changes
+  useEffect(() => {
+    if (currentMember) {
+      setFormData({
+        firstName: currentMember.firstName,
+        lastName: currentMember.lastName,
+        email: currentMember.email,
+        phone: currentMember.phone || '',
+        company: currentMember.company || '',
+        jobTitle: currentMember.jobTitle || ''
+      })
+      setPreferences({
+        emailNotifications: currentMember.preferences?.emailNotifications ?? true,
+        smsNotifications: currentMember.preferences?.smsNotifications ?? false,
+        newsletterSubscribed: currentMember.preferences?.newsletterSubscribed ?? true,
+        eventReminders: currentMember.preferences?.eventReminders ?? true,
+        marketingEmails: currentMember.preferences?.marketingEmails ?? true
+      })
+    }
+  }, [currentMember])
+
+  const handleLoginSuccess = (member: Member) => {
+    setCurrentMember(member)
+  }
+
+  const handleLogout = () => {
+    setCurrentMember(null)
+    toast.success('Logged out successfully')
+  }
 
   const handleSaveProfile = () => {
     if (currentMember) {
@@ -76,15 +148,31 @@ export function MemberPortal({ memberId }: MemberPortalProps) {
 
   if (!currentMember) {
     return (
-      <Card className="p-12">
-        <div className="text-center">
-          <UserCircle size={64} className="mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-semibold mb-2">Member Not Found</h2>
-          <p className="text-muted-foreground">
-            Please log in to access your member portal.
-          </p>
-        </div>
-      </Card>
+      <>
+        <Card className="p-12">
+          <div className="text-center space-y-4">
+            <UserCircle size={64} className="mx-auto text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">Member Not Found</h2>
+            <p className="text-muted-foreground">
+              Please log in to access your member portal.
+            </p>
+            <Button 
+              size="lg" 
+              onClick={() => setLoginDialogOpen(true)}
+              className="mt-4"
+            >
+              Login to Member Portal
+            </Button>
+          </div>
+        </Card>
+        
+        <MemberLoginDialog
+          open={loginDialogOpen}
+          onOpenChange={setLoginDialogOpen}
+          members={members}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      </>
     )
   }
 
@@ -98,19 +186,30 @@ export function MemberPortal({ memberId }: MemberPortalProps) {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">Member Portal</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your profile, preferences, and membership
+            Welcome, {currentMember.firstName} {currentMember.lastName}
           </p>
         </div>
-        <Badge
-          variant="outline"
-          className={
-            currentMember.status === 'active'
-              ? 'bg-teal/10 text-teal border-teal/20'
-              : 'bg-destructive/10 text-destructive border-destructive/20'
-          }
-        >
-          {currentMember.status}
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge
+            variant="outline"
+            className={
+              currentMember.status === 'active'
+                ? 'bg-teal/10 text-teal border-teal/20'
+                : 'bg-destructive/10 text-destructive border-destructive/20'
+            }
+          >
+            {currentMember.status}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="flex items-center gap-2"
+          >
+            <SignOut size={16} weight="bold" />
+            Logout
+          </Button>
+        </div>
       </div>
 
       {daysUntilExpiry <= 30 && daysUntilExpiry > 0 && (

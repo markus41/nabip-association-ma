@@ -283,7 +283,7 @@ function App() {
             <ReportsView reports={reports || []} loading={isLoading} />
           )}
           {currentView === 'portal' && (
-            <MemberPortal memberId="current-member-id" />
+            <MemberPortal members={members || []} />
           )}
         </main>
       </div>
