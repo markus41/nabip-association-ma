@@ -13,6 +13,7 @@ import { ChaptersView } from '@/components/features/ChaptersView'
 import { LearningView } from '@/components/features/LearningView'
 import { MemberPortal } from '@/components/features/MemberPortal'
 import { ReportsView } from '@/components/features/ReportsView'
+import { StateAdminView } from '@/components/features/StateAdminView'
 import {
   ChartBar,
   UserCircle,
@@ -23,7 +24,8 @@ import {
   Command,
   GraduationCap,
   FileText,
-  House
+  House,
+  ShieldCheck
 } from '@phosphor-icons/react'
 import {
   generateMembers,
@@ -40,7 +42,7 @@ import type { Member, Chapter, Event, Transaction, Campaign, DashboardStats, Cou
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 
-type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal'
+type View = 'dashboard' | 'members' | 'events' | 'communications' | 'finance' | 'chapters' | 'learning' | 'reports' | 'portal' | 'state-admin'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard')
@@ -186,6 +188,7 @@ function App() {
     { id: 'chapters', label: 'Chapters', icon: Buildings },
     { id: 'learning', label: 'Learning', icon: GraduationCap },
     { id: 'reports', label: 'Reports', icon: FileText },
+    { id: 'state-admin', label: 'State Admin', icon: ShieldCheck },
     { id: 'portal', label: 'My Portal', icon: House }
   ]
 
@@ -297,6 +300,16 @@ function App() {
           )}
           {currentView === 'reports' && (
             <ReportsView reports={reports || []} loading={isLoading} />
+          )}
+          {currentView === 'state-admin' && (
+            <StateAdminView
+              chapters={chapters || []}
+              members={members || []}
+              events={events || []}
+              transactions={transactions || []}
+              userState="California"
+              loading={isLoading}
+            />
           )}
           {currentView === 'portal' && (
             <MemberPortal memberId="current-member-id" />
