@@ -179,8 +179,8 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-        <Card className="xl:col-span-2 flex flex-col">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="flex flex-col">
           <div className="p-4 border-b">
             <h2 className="text-base font-semibold">Revenue Breakdown</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Distribution by category</p>
@@ -240,7 +240,7 @@ export function FinanceView({ transactions, loading }: FinanceViewProps) {
           </div>
         </Card>
 
-        <Card className="xl:col-span-3 flex flex-col overflow-hidden">
+        <Card className="lg:col-span-2 flex flex-col overflow-hidden">
           <div className="p-4 border-b flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
