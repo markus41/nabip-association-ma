@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Buildings, Users, CalendarDots, MapPin } from '@phosphor-icons/react'
+import { Button } from '@/components/ui/button'
+import { Buildings, Users, CalendarDots, MapPin, Plus, Table as TableIcon } from '@phosphor-icons/react'
+import { ChaptersGrid } from './ChaptersGrid'
 import type { Chapter } from '@/lib/types'
 
 interface ChaptersViewProps {
@@ -10,6 +12,7 @@ interface ChaptersViewProps {
 }
 
 export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
+  const [viewMode, setViewMode] = useState<'cards' | 'grid'>('cards')
   const [selectedType, setSelectedType] = useState<string>('all')
 
   const hierarchicalChapters = useMemo(() => {
@@ -53,11 +56,31 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Chapters</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage organizational hierarchy and chapter performance
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Chapters</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage organizational hierarchy and chapter performance
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === 'cards' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('cards')}
+          >
+            <Buildings size={16} className="mr-2" />
+            Cards
+          </Button>
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+          >
+            <TableIcon size={16} className="mr-2" />
+            Grid
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -110,50 +133,52 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
         </Card>
       </div>
 
-      <Card className="p-4">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setSelectedType('all')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedType === 'all'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/70'
-            }`}
-          >
-            All Chapters
-          </button>
-          <button
-            onClick={() => setSelectedType('national')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedType === 'national'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/70'
-            }`}
-          >
-            National ({hierarchicalChapters.national.length})
-          </button>
-          <button
-            onClick={() => setSelectedType('state')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedType === 'state'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/70'
-            }`}
-          >
-            State ({hierarchicalChapters.states.length})
-          </button>
-          <button
-            onClick={() => setSelectedType('local')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              selectedType === 'local'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/70'
-            }`}
-          >
-            Local ({hierarchicalChapters.locals.length})
-          </button>
-        </div>
-      </Card>
+      {viewMode === 'cards' && (
+        <Card className="p-4">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSelectedType('all')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedType === 'all'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70'
+              }`}
+            >
+              All Chapters
+            </button>
+            <button
+              onClick={() => setSelectedType('national')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedType === 'national'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70'
+              }`}
+            >
+              National ({hierarchicalChapters.national.length})
+            </button>
+            <button
+              onClick={() => setSelectedType('state')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedType === 'state'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70'
+              }`}
+            >
+              State ({hierarchicalChapters.states.length})
+            </button>
+            <button
+              onClick={() => setSelectedType('local')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedType === 'local'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70'
+              }`}
+            >
+              Local ({hierarchicalChapters.locals.length})
+            </button>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
@@ -209,8 +234,11 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
+      {viewMode === 'grid' ? (
+        <ChaptersGrid chapters={chapters} loading={loading} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loading ? (
           Array.from({ length: 9 }).map((_, i) => (
             <Card key={i} className="p-6">
               <div className="space-y-4">
@@ -288,8 +316,9 @@ export function ChaptersView({ chapters, loading }: ChaptersViewProps) {
               </div>
             </Card>
           ))
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
