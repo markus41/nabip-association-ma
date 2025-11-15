@@ -1,0 +1,626 @@
+name: Claude Intelligent Assistant
+
+# Establishes AI-assisted development workflows to streamline code quality, accelerate implementation,
+# and provide intelligent guidance across your development environment
+
+on:
+  # Respond to @claude mentions
+  issue_comment:
+    types: [created, edited]
+  pull_request_review_comment:
+    types: [created, edited]
+  pull_request_review:
+    types: [submitted]
+
+  # Auto-engage on new issues and PRs
+  issues:
+    types: [opened, assigned, labeled, reopened]
+  pull_request:
+    types: [opened, ready_for_review, synchronize, review_requested]
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task for Claude to perform'
+        required: true
+        type: choice
+        options:
+          - 'Work on assigned issues'
+          - 'Review open PRs'
+          - 'Fix linting errors'
+          - 'Update documentation'
+          - 'Generate status report'
+          - 'Analyze code quality'
+      scope:
+        description: 'Scope of operation'
+        required: false
+        default: 'all'
+
+  # Scheduled tasks
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly health check (Monday 9 AM UTC)
+    - cron: '0 */6 * * *'  # Check assigned issues every 6 hours
+
+env:
+  CLAUDE_USERNAME: 'claude-code[bot]'
+
+jobs:
+  # ============================================================================
+  # RATE LIMITING - Prevent concurrent runs and control costs
+  # ============================================================================
+  rate-limit-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Check rate limits
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const cutoffTime = new Date(Date.now() - (60 * 60 * 1000)); // 1 hour ago
+
+            // Get recent workflow runs
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'claude-intelligent.yml',
+              status: 'in_progress',
+            });
+
+            const recentRuns = runs.workflow_runs.filter(run =>
+              new Date(run.created_at) > cutoffTime
+            );
+
+            // Allow max 2 concurrent runs
+            if (recentRuns.length >= 2) {
+              console.log('⚠️ Rate limit: Too many concurrent runs');
+              core.setOutput('should_run', 'false');
+            } else {
+              core.setOutput('should_run', 'true');
+            }
+
+  # ============================================================================
+  # MAIN RESPONSE - @claude mentions and PR reviews
+  # ============================================================================
+  claude-respond:
+    needs: rate-limit-check
+    if: |
+      needs.rate-limit-check.outputs.should_run == 'true' && (
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+        (github.event_name == 'issues' && github.event.action == 'opened' && contains(github.event.issue.body, '@claude')) ||
+        (github.event_name == 'workflow_dispatch')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+      checks: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git for commits
+        run: |
+          git config --global user.name "Claude Code Assistant"
+          git config --global user.email "claude-code[bot]@users.noreply.github.com"
+
+      - name: Analyze request intent
+        id: intent
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body || github.event.review.body || github.event.issue.body }}"
+
+          # Detect user intent
+          echo "$COMMENT_BODY" | grep -qiE "@claude.*(edit|fix|update|change|modify).*(this )?pr" && echo "wants_pr_edit=true" >> $GITHUB_OUTPUT || true
+          echo "$COMMENT_BODY" | grep -qiE "@claude.*(implement|code|write|create|build)" && echo "wants_implementation=true" >> $GITHUB_OUTPUT || true
+          echo "$COMMENT_BODY" | grep -qiE "@claude.*(review|analyze|check)" && echo "wants_review=true" >> $GITHUB_OUTPUT || true
+          echo "$COMMENT_BODY" | grep -qiE "@claude.*(help|how|what|explain|suggest)" && echo "wants_help=true" >> $GITHUB_OUTPUT || true
+
+          echo "comment_body<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMENT_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Gather repository context
+        id: context
+        run: |
+          # Issue counts by priority
+          echo "open_critical=$(gh issue list --label critical --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+          echo "open_high=$(gh issue list --label high-priority --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+
+          # PR context if applicable
+          if [ "${{ github.event_name }}" == "pull_request" ] || [ "${{ github.event_name }}" == "pull_request_review_comment" ] || [ "${{ github.event_name }}" == "pull_request_review" ]; then
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "pr_title=$(gh pr view $PR_NUMBER --json title -q .title || echo 'Unknown')" >> $GITHUB_OUTPUT
+            echo "pr_files_changed=$(gh pr view $PR_NUMBER --json files -q '.files | length' || echo '0')" >> $GITHUB_OUTPUT
+            FAILING_CHECKS=$(gh pr checks $PR_NUMBER --json state -q '[.[] | select(.state != "SUCCESS")] | length' || echo '0')
+            echo "pr_failing_checks=$FAILING_CHECKS" >> $GITHUB_OUTPUT
+          fi
+
+          # Issue context if applicable
+          if [ "${{ github.event_name }}" == "issues" ] || [ "${{ github.event_name }}" == "issue_comment" ]; then
+            ISSUE_NUMBER="${{ github.event.issue.number }}"
+            echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+            echo "issue_title=$(gh issue view $ISSUE_NUMBER --json title -q .title || echo 'Unknown')" >> $GITHUB_OUTPUT
+          fi
+
+          echo "total_issues=$(gh issue list --state all --json number | jq 'length')" >> $GITHUB_OUTPUT
+          echo "open_prs=$(gh pr list --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Execute Claude Code with security controls
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+          additional_permissions: |
+            actions: read
+            checks: write
+            contents: write
+            issues: write
+            pull-requests: write
+
+          prompt: |
+            **🤖 Claude Intelligent Assistant for NABIP AMS**
+
+            You're assisting with the NABIP Association Management System (AMS-ALPHA), establishing scalable development practices to support sustainable growth.
+
+            ${{ github.event_name == 'workflow_dispatch' && format('**📋 Scheduled Task**: {0}', github.event.inputs.task) || '' }}
+
+            **🎯 Request Analysis**:
+            ${{ steps.intent.outputs.wants_pr_edit == 'true' && '⚠️ **USER REQUESTS PR EDITS** - Make code changes and commit!' || '' }}
+            ${{ steps.intent.outputs.wants_implementation == 'true' && '⚠️ **USER REQUESTS IMPLEMENTATION** - Write code and create commits!' || '' }}
+            ${{ steps.intent.outputs.wants_review == 'true' && '📋 **USER REQUESTS CODE REVIEW** - Provide detailed analysis and suggestions' || '' }}
+            ${{ steps.intent.outputs.wants_help == 'true' && '💡 **USER REQUESTS GUIDANCE** - Provide explanations and recommendations' || '' }}
+
+            **📊 Repository Status**:
+            - **Project**: NABIP AMS (Association Management System - Alpha Phase)
+            - **Total Issues**: ${{ steps.context.outputs.total_issues }}
+            - **Open Critical**: ${{ steps.context.outputs.open_critical }}
+            - **Open High Priority**: ${{ steps.context.outputs.open_high }}
+            - **Open PRs**: ${{ steps.context.outputs.open_prs }}
+
+            ${{ steps.context.outputs.pr_number && format('**🔀 Pull Request Context**:
+            - PR #{0}: {1}
+            - Files Changed: {2}
+            - Failing Checks: {3}
+            - Branch: {4}
+            - ✅ You have write access to this branch',
+            steps.context.outputs.pr_number,
+            steps.context.outputs.pr_title,
+            steps.context.outputs.pr_files_changed,
+            steps.context.outputs.pr_failing_checks,
+            github.event.pull_request.head.ref) || '' }}
+
+            ${{ steps.context.outputs.issue_number && format('**📋 Issue Context**:
+            - Issue #{0}: {1}',
+            steps.context.outputs.issue_number,
+            steps.context.outputs.issue_title) || '' }}
+
+            **🛠️ Your Capabilities**:
+
+            **Code Editing (When Requested)**:
+            - ✅ Edit files in PRs using Editor tool
+            - ✅ Create new files and components
+            - ✅ Fix bugs and implement features
+            - ✅ Refactor code for quality
+            - ✅ Add tests and documentation
+            - ✅ Changes auto-commit after execution
+
+            **Code Review & Analysis**:
+            - ✅ Review code quality and security
+            - ✅ Analyze performance patterns
+            - ✅ Suggest improvements
+            - ✅ Identify breaking changes
+            - ✅ Check test coverage
+
+            **Issue Management**:
+            - ✅ Update issue status and labels
+            - ✅ Link related issues/PRs
+            - ✅ Provide implementation guidance
+
+            **📚 Project Knowledge**:
+            - **Tech Stack**: React 19, TypeScript 5.7, Vite 6, Supabase, Vercel
+            - **Design Philosophy**: Apple/Stripe-inspired radical simplicity
+            - **Brand Colors**: Deep Navy (#003366), Teal (#008B8B), Gold (#FFD700)
+            - **Brand Voice**: Professional but approachable, solution-focused, consultative
+            - **Purpose**: Consolidate 15-20 disconnected tools for 20,000+ NABIP members
+
+            **🎬 Workflow Guidance**:
+
+            **When Asked to Edit PR**:
+            1. Review current implementation
+            2. Make requested changes using Editor tool
+            3. Git auto-commits after you finish
+            4. Comment explaining changes
+            5. Offer further assistance
+
+            **When Asked to Review**:
+            1. Analyze code quality, security, performance
+            2. Provide inline suggestions
+            3. **Always offer to implement fixes**: "Would you like me to implement these improvements? Reply with '@claude fix this PR'"
+
+            **When Asked for Help**:
+            1. Provide clear, actionable guidance
+            2. Reference specific files and line numbers
+            3. Suggest concrete next steps
+            4. Offer to implement if helpful
+
+            **💬 Communication Style**:
+            - Use Brookside BI brand voice: professional but approachable, solution-focused
+            - Be direct and action-oriented: "Implementing the requested changes now..."
+            - Explain what you're changing and why
+            - Always offer follow-up assistance
+
+            **🚨 Critical Reminders**:
+            - ✅ Git is configured with your credentials
+            - ✅ You're on the correct branch
+            - ✅ DO edit code when requested
+            - ✅ DO create commits
+            - ✅ Changes auto-commit after execution
+            - ✅ Always explain your changes
+
+            **👤 User's Request**:
+            ```
+            ${{ steps.intent.outputs.comment_body }}
+            ```
+
+            **NOW TAKE ACTION!** Provide intelligent assistance aligned with the user's request.
+
+          claude_args: |
+            --allowed-tools "Bash(gh *),Bash(git *),Bash(npm *),Bash(node *),Bash(npx *),Bash(cat *),Bash(grep *),Bash(find *),Bash(ls *),Bash(pwd),Bash(echo *),Editor(*),Browser(*)"
+            --max-iterations 50
+            --model claude-sonnet-4-20250514
+            --verbose
+
+      - name: Commit Claude's changes
+        if: success()
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+
+            if [ -n "${{ steps.context.outputs.pr_number }}" ]; then
+              COMMIT_MSG="feat: Claude updates to PR #${{ steps.context.outputs.pr_number }}
+
+Establish code improvements to support scalable development practices.
+
+Requested by: @${{ github.actor }}"
+            elif [ -n "${{ steps.context.outputs.issue_number }}" ]; then
+              COMMIT_MSG="fix: Claude work on #${{ steps.context.outputs.issue_number }}
+
+Streamline implementation to address reported issue.
+
+Requested by: @${{ github.actor }}"
+            else
+              COMMIT_MSG="chore: Claude automated improvements
+
+Establish quality enhancements across codebase.
+
+Requested by: @${{ github.actor }}"
+            fi
+
+            git commit -m "$COMMIT_MSG" || echo "Nothing to commit"
+            git push origin HEAD || echo "Nothing to push"
+            echo "✅ Changes committed and pushed"
+          else
+            echo "ℹ️ No changes to commit"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply intelligent auto-labeling
+        if: github.event_name == 'issues' && github.event.action == 'opened'
+        run: |
+          ISSUE_BODY="${{ github.event.issue.body }}"
+          ISSUE_NUMBER="${{ github.event.issue.number }}"
+
+          # Feature area detection
+          echo "$ISSUE_BODY" | grep -qi "member" && gh issue edit $ISSUE_NUMBER --add-label "area:members" || true
+          echo "$ISSUE_BODY" | grep -qi "chapter" && gh issue edit $ISSUE_NUMBER --add-label "area:chapters" || true
+          echo "$ISSUE_BODY" | grep -qi "event" && gh issue edit $ISSUE_NUMBER --add-label "area:events" || true
+          echo "$ISSUE_BODY" | grep -qiE "campaign|email" && gh issue edit $ISSUE_NUMBER --add-label "area:campaigns" || true
+          echo "$ISSUE_BODY" | grep -qiE "course|learning|lms" && gh issue edit $ISSUE_NUMBER --add-label "area:learning" || true
+          echo "$ISSUE_BODY" | grep -qi "report" && gh issue edit $ISSUE_NUMBER --add-label "area:reports" || true
+          echo "$ISSUE_BODY" | grep -qiE "security|auth|permission|rls" && gh issue edit $ISSUE_NUMBER --add-label "security" || true
+          echo "$ISSUE_BODY" | grep -qiE "ui|ux|design|component" && gh issue edit $ISSUE_NUMBER --add-label "ui/ux" || true
+          echo "$ISSUE_BODY" | grep -qiE "database|supabase|postgres|migration" && gh issue edit $ISSUE_NUMBER --add-label "database" || true
+          echo "$ISSUE_BODY" | grep -qiE "deploy|vercel|build|ci/cd" && gh issue edit $ISSUE_NUMBER --add-label "deployment" || true
+
+          # Type detection
+          echo "$ISSUE_BODY" | grep -qiE "bug|broken|not working|error|crash" && gh issue edit $ISSUE_NUMBER --add-label "type:bug" || true
+          echo "$ISSUE_BODY" | grep -qiE "feature|enhancement|add|new" && gh issue edit $ISSUE_NUMBER --add-label "type:feature" || true
+          echo "$ISSUE_BODY" | grep -qiE "docs|documentation|readme" && gh issue edit $ISSUE_NUMBER --add-label "type:docs" || true
+          echo "$ISSUE_BODY" | grep -qiE "performance|slow|optimization" && gh issue edit $ISSUE_NUMBER --add-label "type:performance" || true
+          echo "$ISSUE_BODY" | grep -qiE "test|testing|coverage" && gh issue edit $ISSUE_NUMBER --add-label "type:testing" || true
+
+          echo "✅ Applied intelligent labels to issue #$ISSUE_NUMBER"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  # ============================================================================
+  # AUTOMATED CODE REVIEW - For all new/updated PRs
+  # ============================================================================
+  auto-code-review:
+    needs: rate-limit-check
+    if: |
+      needs.rate-limit-check.outputs.should_run == 'true' &&
+      github.event_name == 'pull_request' &&
+      (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'ready_for_review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run automated code review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            contents: read
+            pull-requests: write
+
+          prompt: |
+            **🔍 Automated Code Review - PR #${{ github.event.pull_request.number }}**
+
+            **PR Details**:
+            - **Title**: ${{ github.event.pull_request.title }}
+            - **Author**: @${{ github.event.pull_request.user.login }}
+            - **Branch**: ${{ github.event.pull_request.head.ref }} → ${{ github.event.pull_request.base.ref }}
+            - **Files Changed**: Review the diff using GitHub tools
+
+            **📋 Review Criteria** (Aligned with Brookside BI Standards):
+
+            **1. Code Quality & Maintainability**
+            - ✅ Clean, readable code following TypeScript/React best practices
+            - ✅ Proper component structure and separation of concerns
+            - ✅ Meaningful variable/function names
+            - ✅ Appropriate error handling
+            - ✅ No commented-out code or debugging statements
+
+            **2. Security & Data Protection**
+            - ✅ No hardcoded credentials or API keys
+            - ✅ Proper input validation and sanitization
+            - ✅ Supabase RLS policies considered
+            - ✅ No SQL injection vulnerabilities
+            - ✅ Secure authentication patterns
+
+            **3. Performance & Scalability**
+            - ✅ Efficient algorithms and data structures
+            - ✅ Proper React hooks usage (useMemo, useCallback where needed)
+            - ✅ Database queries optimized
+            - ✅ No unnecessary re-renders
+            - ✅ Bundle size considerations
+
+            **4. Accessibility & UX**
+            - ✅ Semantic HTML elements
+            - ✅ ARIA labels where needed
+            - ✅ Keyboard navigation support
+            - ✅ Color contrast compliance
+            - ✅ Loading/error states handled
+
+            **5. Brand Alignment**
+            - ✅ Follows Brookside BI brand voice (professional, solution-focused)
+            - ✅ Comments explain business value, not just technical implementation
+            - ✅ User-facing text aligns with brand language
+
+            **6. Testing & Documentation**
+            - ✅ Complex logic includes tests
+            - ✅ Public APIs documented
+            - ✅ Breaking changes noted
+            - ✅ Migration steps for schema changes
+
+            **💬 Review Format**:
+            1. **Summary**: 2-3 sentence overview of changes and quality
+            2. **Strengths**: What's done well
+            3. **Issues**: Critical/high-priority concerns (if any)
+            4. **Suggestions**: Improvements and optimizations
+            5. **Action**: Always end with: "Would you like me to implement any of these suggestions? Reply with '@claude fix this PR' and I'll make the changes."
+
+            **🎯 Goal**: Provide actionable feedback that improves code quality while supporting the developer.
+
+          claude_args: |
+            --allowed-tools "Bash(gh *),Bash(git *),Browser(*)"
+            --max-iterations 30
+            --model claude-sonnet-4-20250514
+
+  # ============================================================================
+  # ASSIGNED ISSUES - Work on issues assigned to Claude
+  # ============================================================================
+  work-on-assigned-issues:
+    needs: rate-limit-check
+    if: |
+      needs.rate-limit-check.outputs.should_run == 'true' && (
+        (github.event_name == 'issues' && github.event.action == 'assigned' && contains(github.event.assignee.login, 'claude-code')) ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'Work on assigned issues') ||
+        (github.event_name == 'schedule' && github.event.schedule == '0 */6 * * *')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "Claude Code Assistant"
+          git config --global user.email "claude-code[bot]@users.noreply.github.com"
+
+      - name: Find assigned issues
+        id: assigned
+        run: |
+          ASSIGNED=$(gh issue list --assignee claude-code --state open --json number,title,labels --limit 10)
+          echo "count=$(echo "$ASSIGNED" | jq 'length')" >> $GITHUB_OUTPUT
+          echo "issues=$ASSIGNED" >> $GITHUB_OUTPUT
+
+          if [ "$(echo "$ASSIGNED" | jq 'length')" -gt 0 ]; then
+            echo "✅ Found $(echo "$ASSIGNED" | jq 'length') assigned issues"
+            echo "$ASSIGNED" | jq -r '.[] | "- Issue #\(.number): \(.title)"'
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Work on assigned issues
+        if: steps.assigned.outputs.count > 0
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            contents: write
+            pull-requests: write
+            issues: write
+
+          prompt: |
+            **🎯 Work on Assigned Issues**
+
+            You have **${{ steps.assigned.outputs.count }}** issue(s) assigned:
+
+            ${{ steps.assigned.outputs.issues }}
+
+            **📋 Implementation Workflow**:
+
+            For each issue (prioritize: critical > high > medium):
+
+            1. **Read & Analyze**
+               - Read issue description carefully
+               - Check if there's already a PR or branch
+               - Understand requirements and acceptance criteria
+
+            2. **Plan Implementation**
+               - Identify files that need changes
+               - Consider impact on existing code
+               - Plan test coverage
+
+            3. **Implement Solution** (if not started):
+               - Create branch: `issue-{number}-{short-description}`
+               - Implement fix/feature following best practices
+               - Add/update tests if needed
+               - Update documentation
+
+            4. **Create Pull Request**:
+               - Push branch
+               - Create PR linking to issue
+               - Add comprehensive description
+               - Request review
+
+            5. **Update Issue**:
+               - Comment with progress
+               - Link to created PR
+               - Update labels if needed
+
+            **🚨 Important**:
+            - Follow Brookside BI brand voice in commits and PR descriptions
+            - Use conventional commits: `feat:`, `fix:`, `docs:`, etc.
+            - Ensure all changes support scalable, sustainable development
+            - Test locally before creating PR (if possible)
+
+            **NOW GET TO WORK!** Tackle these issues systematically.
+
+          claude_args: |
+            --allowed-tools "Bash(gh *),Bash(git *),Bash(npm *),Bash(node *),Bash(npx *),Editor(*),Browser(*)"
+            --max-iterations 100
+            --model claude-sonnet-4-20250514
+
+  # ============================================================================
+  # WEEKLY HEALTH CHECK - Repository status and recommendations
+  # ============================================================================
+  weekly-health-check:
+    if: github.event_name == 'schedule' && github.event.schedule == '0 9 * * 1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate health report
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            contents: read
+            issues: write
+
+          prompt: |
+            **📊 Weekly Repository Health Check**
+
+            Generate a comprehensive health report for the NABIP AMS repository:
+
+            **📋 Analysis Areas**:
+
+            1. **Issue Triage**
+               - Open issues by priority (critical, high, medium, low)
+               - Stale issues (no activity >30 days)
+               - Issues needing labels
+               - Issues without assignees
+
+            2. **Pull Request Status**
+               - Open PRs by age
+               - PRs awaiting review
+               - PRs with failing checks
+               - Stale PRs (no activity >14 days)
+
+            3. **Code Quality Indicators**
+               - Recent linting/type errors
+               - Test coverage trends (if available)
+               - Security scan findings
+               - Dependency updates needed
+
+            4. **Development Velocity**
+               - PRs merged this week
+               - Issues closed this week
+               - Average PR review time
+               - Deployment frequency
+
+            5. **Recommendations**
+               - Priority issues to address
+               - Technical debt to tackle
+               - Process improvements
+               - Automation opportunities
+
+            **📝 Output Format**:
+            Create a new issue titled "Weekly Health Report - [WEEK OF DATE]" with:
+            - Executive summary
+            - Detailed metrics
+            - Action items with priorities
+            - Links to specific issues/PRs
+            - Recommendations for next week
+
+            **🎯 Goal**: Provide actionable insights to maintain repository health and support sustainable development practices.
+
+          claude_args: |
+            --allowed-tools "Bash(gh *),Bash(git *),Browser(*)"
+            --max-iterations 40
+            --model claude-sonnet-4-20250514

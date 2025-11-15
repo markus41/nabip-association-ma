@@ -25,7 +25,13 @@
       "Bash(curl:*)",
       "Bash(nul)",
       "mcp__notion__notion-fetch",
-      "mcp__notion__notion-update-page"
+      "mcp__notion__notion-update-page",
+      "Bash(del claude.yml claude-code-review.yml claude-code-ultimate.yml security-audit.yml security-scanner.yml)",
+      "mcp__github__get_me",
+      "Bash(git remote:*)",
+      "mcp__github__list_issues",
+      "mcp__github__issue_read",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

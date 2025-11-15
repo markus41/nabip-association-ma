@@ -1,0 +1,656 @@
+name: GitHub Custom Agent
+
+# Establish intelligent repository management through AI-powered automation
+# to streamline workflows and improve visibility across your development environment
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task to perform'
+        required: true
+        type: choice
+        options:
+          - 'generate-release-notes'
+          - 'repository-health-check'
+          - 'analyze-dependencies'
+          - 'detect-breaking-changes'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  # ================================================================
+  # INTELLIGENT PR DESCRIPTION GENERATION
+  # ================================================================
+
+  enhance-pr-description:
+    name: Generate Intelligent PR Description
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze PR changes and generate enhanced description
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            // Get PR diff statistics
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_request_number: pr.number,
+              per_page: 100
+            });
+
+            // Analyze changes
+            const stats = {
+              filesChanged: files.length,
+              additions: files.reduce((sum, f) => sum + f.additions, 0),
+              deletions: files.reduce((sum, f) => sum + f.deletions, 0),
+              fileTypes: {}
+            };
+
+            // Categorize file changes
+            const categories = {
+              frontend: [],
+              backend: [],
+              database: [],
+              config: [],
+              tests: [],
+              docs: [],
+              workflows: []
+            };
+
+            files.forEach(file => {
+              const ext = file.filename.split('.').pop();
+              stats.fileTypes[ext] = (stats.fileTypes[ext] || 0) + 1;
+
+              if (file.filename.startsWith('src/components/') || file.filename.startsWith('src/features/')) {
+                categories.frontend.push(file.filename);
+              } else if (file.filename.startsWith('src/lib/') || file.filename.startsWith('src/actions/')) {
+                categories.backend.push(file.filename);
+              } else if (file.filename.startsWith('supabase/migrations/')) {
+                categories.database.push(file.filename);
+              } else if (file.filename.match(/\.(json|yml|yaml|config\.)/) || file.filename === 'package.json') {
+                categories.config.push(file.filename);
+              } else if (file.filename.includes('test') || file.filename.includes('spec')) {
+                categories.tests.push(file.filename);
+              } else if (file.filename.match(/\.(md|mdx)$/)) {
+                categories.docs.push(file.filename);
+              } else if (file.filename.startsWith('.github/workflows/')) {
+                categories.workflows.push(file.filename);
+              }
+            });
+
+            // Determine change type
+            let changeType = 'feature';
+            const title = pr.title.toLowerCase();
+            if (title.includes('fix') || title.includes('bug')) {
+              changeType = 'bugfix';
+            } else if (title.includes('refactor') || title.includes('cleanup')) {
+              changeType = 'refactor';
+            } else if (title.includes('docs') || title.includes('documentation')) {
+              changeType = 'documentation';
+            } else if (title.includes('test')) {
+              changeType = 'testing';
+            } else if (title.includes('chore') || title.includes('deps')) {
+              changeType = 'maintenance';
+            }
+
+            // Detect areas of impact
+            const areasImpacted = [];
+            Object.entries(categories).forEach(([area, files]) => {
+              if (files.length > 0) {
+                areasImpacted.push(`- **${area.charAt(0).toUpperCase() + area.slice(1)}**: ${files.length} file(s)`);
+              }
+            });
+
+            // Check for breaking changes
+            const breakingChanges = [];
+            const prBody = (pr.body || '').toLowerCase();
+            const prTitle = pr.title.toLowerCase();
+
+            if (prBody.includes('breaking') || prTitle.includes('breaking') || prTitle.startsWith('!')) {
+              breakingChanges.push('⚠️ **Potential Breaking Change Detected**');
+            }
+
+            if (categories.database.length > 0) {
+              breakingChanges.push('⚠️ **Database Migration Included** - May require deployment coordination');
+            }
+
+            // Generate intelligent description enhancement
+            const enhancement = `
+
+---
+
+## 🤖 AI-Generated PR Analysis
+
+**📊 Change Statistics:**
+- **Files Modified**: ${stats.filesChanged}
+- **Lines Added**: +${stats.additions}
+- **Lines Removed**: -${stats.deletions}
+- **Net Change**: ${stats.additions - stats.deletions > 0 ? '+' : ''}${stats.additions - stats.deletions}
+
+**🎯 Change Type**: \`${changeType}\`
+
+**📂 Areas Impacted:**
+${areasImpacted.length > 0 ? areasImpacted.join('\n') : '- No major areas identified'}
+
+${breakingChanges.length > 0 ? `\n**⚠️ Important Notes:**\n${breakingChanges.join('\n')}\n` : ''}
+
+**🔍 Code Review Checklist:**
+- [ ] Verify all new code follows project conventions
+- [ ] Ensure proper error handling is implemented
+- [ ] Check for security vulnerabilities
+- [ ] Validate database migrations (if applicable)
+- [ ] Confirm tests cover new functionality
+- [ ] Review accessibility compliance
+- [ ] Verify performance impact is acceptable
+
+**📈 Deployment Considerations:**
+${categories.database.length > 0 ? '- ⚠️ Database migrations must run before deployment\n' : ''}${breakingChanges.length > 0 ? '- ⚠️ Breaking changes may require coordinated deployment\n' : ''}${categories.config.length > 0 ? '- ℹ️ Configuration changes detected - verify environment variables\n' : ''}- Preview deployment will be automatically created for validation
+
+**🔗 Related Documentation:**
+${categories.frontend.length > 0 ? '- [Component Guidelines](docs/components.md)\n' : ''}${categories.database.length > 0 ? '- [Database Migration Guide](docs/database.md)\n' : ''}${categories.tests.length > 0 ? '- [Testing Standards](docs/testing.md)\n' : ''}- [Contributing Guidelines](CONTRIBUTING.md)
+
+---
+
+_AI-powered PR analysis establishing structured code review workflows across your development environment_`;
+
+            // Update PR body
+            const currentBody = pr.body || '';
+            if (!currentBody.includes('🤖 AI-Generated PR Analysis')) {
+              const updatedBody = currentBody + enhancement;
+
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_request_number: pr.number,
+                body: updatedBody
+              });
+
+              console.log('✅ Enhanced PR description with AI-generated analysis');
+            }
+
+  # ================================================================
+  # DEPENDENCY IMPACT ANALYSIS
+  # ================================================================
+
+  analyze-dependency-changes:
+    name: Analyze Dependency Impact
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect and analyze dependency changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            // Check if package.json was modified
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_request_number: pr.number
+            });
+
+            const packageJsonChanged = files.some(f => f.filename === 'package.json');
+
+            if (!packageJsonChanged) {
+              console.log('ℹ️ No dependency changes detected');
+              return;
+            }
+
+            console.log('📦 Dependency changes detected - analyzing impact...');
+
+            // Post dependency change notice
+            const message = `## 📦 Dependency Changes Detected
+
+This PR modifies \`package.json\`. Please ensure:
+
+**🔍 Pre-Merge Validation:**
+- [ ] All new dependencies are from trusted sources
+- [ ] Dependencies are pinned to specific versions (not using ^ or ~)
+- [ ] \`npm audit\` passes without high/critical vulnerabilities
+- [ ] Bundle size impact is acceptable
+- [ ] License compatibility verified
+
+**⚙️ Post-Merge Actions Required:**
+1. **Team Notification**: Inform team members to run \`npm install\`
+2. **CI/CD Validation**: Ensure all pipelines pass with new dependencies
+3. **Deployment Verification**: Monitor first deployment for dependency-related issues
+
+**🔒 Security Considerations:**
+- Run \`npm audit\` locally before merging
+- Review dependency change log for security advisories
+- Validate transitive dependencies for known vulnerabilities
+
+---
+
+_Automated dependency impact analysis maintaining secure and stable package management_`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: message
+            });
+
+  # ================================================================
+  # BREAKING CHANGE DETECTION
+  # ================================================================
+
+  detect-breaking-changes:
+    name: Detect Potential Breaking Changes
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for breaking changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === 'pull_request') {
+              const pr = context.payload.pull_request;
+
+              // Get all changed files
+              const { data: files } = await github.rest.pulls.listFiles({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_request_number: pr.number,
+                per_page: 100
+              });
+
+              const breakingChangeIndicators = [];
+
+              // Check for database migrations
+              const dbMigrations = files.filter(f => f.filename.startsWith('supabase/migrations/'));
+              if (dbMigrations.length > 0) {
+                breakingChangeIndicators.push({
+                  type: 'Database Migration',
+                  severity: 'high',
+                  files: dbMigrations.map(f => f.filename),
+                  impact: 'May require coordinated deployment and database changes'
+                });
+              }
+
+              // Check for API changes
+              const apiFiles = files.filter(f =>
+                f.filename.includes('/api/') ||
+                f.filename.includes('actions/') ||
+                f.filename.includes('lib/api/')
+              );
+              if (apiFiles.length > 0) {
+                // Check patch content for removed/renamed exports
+                const hasRemovals = apiFiles.some(f =>
+                  f.patch && (f.patch.includes('-export') || f.patch.includes('-function'))
+                );
+                if (hasRemovals) {
+                  breakingChangeIndicators.push({
+                    type: 'API Changes',
+                    severity: 'medium',
+                    files: apiFiles.map(f => f.filename),
+                    impact: 'Removed or renamed API functions may break dependent code'
+                  });
+                }
+              }
+
+              // Check for schema/type changes
+              const typeFiles = files.filter(f => f.filename.includes('types/') || f.filename.endsWith('.d.ts'));
+              if (typeFiles.length > 0) {
+                breakingChangeIndicators.push({
+                  type: 'Type Definitions Modified',
+                  severity: 'medium',
+                  files: typeFiles.map(f => f.filename),
+                  impact: 'Type changes may require updates in consuming code'
+                });
+              }
+
+              // Check for environment variable changes
+              const envFiles = files.filter(f => f.filename.includes('.env') || f.filename === 'vercel.json');
+              if (envFiles.length > 0) {
+                breakingChangeIndicators.push({
+                  type: 'Environment Configuration',
+                  severity: 'high',
+                  files: envFiles.map(f => f.filename),
+                  impact: 'Environment variables may need to be updated in deployment environments'
+                });
+              }
+
+              if (breakingChangeIndicators.length > 0) {
+                const severityEmoji = { high: '🚨', medium: '⚠️', low: 'ℹ️' };
+
+                const warningsList = breakingChangeIndicators.map(indicator => `
+**${severityEmoji[indicator.severity]} ${indicator.type}** (${indicator.severity.toUpperCase()})
+- **Impact**: ${indicator.impact}
+- **Files**: ${indicator.files.slice(0, 3).map(f => \`\\\`${f}\\\`\`).join(', ')}${indicator.files.length > 3 ? \` (+${indicator.files.length - 3} more)` : ''}
+`).join('\n');
+
+                const message = `## 🚨 Potential Breaking Changes Detected
+
+This PR contains changes that may introduce breaking changes:
+
+${warningsList}
+
+**🔧 Required Actions:**
+1. **Review Impact**: Carefully review all breaking changes
+2. **Update Documentation**: Document migration steps if needed
+3. **Version Bump**: Consider semantic versioning implications
+4. **Communication**: Notify team and stakeholders of breaking changes
+5. **Migration Guide**: Create migration guide for affected users/systems
+
+**📋 Pre-Merge Checklist:**
+- [ ] Breaking changes are intentional and necessary
+- [ ] Documentation updated with migration steps
+- [ ] Version number reflects breaking changes (major version bump)
+- [ ] Team notified of required actions post-deployment
+- [ ] Backward compatibility considered and addressed where possible
+
+---
+
+_Automated breaking change detection establishing reliable change management across your environment_`;
+
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: message
+                });
+
+                // Add breaking-change label
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  labels: ['breaking-change']
+                });
+              }
+            }
+
+  # ================================================================
+  # AUTOMATIC RELEASE NOTES GENERATION
+  # ================================================================
+
+  generate-release-notes:
+    name: Generate Comprehensive Release Notes
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'generate-release-notes')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate and publish release notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get the latest release
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 2
+            });
+
+            const currentRelease = releases[0];
+            const previousRelease = releases[1];
+
+            if (!previousRelease) {
+              console.log('ℹ️ No previous release found - skipping release notes generation');
+              return;
+            }
+
+            // Get all merged PRs between releases
+            const { data: commits } = await github.rest.repos.compareCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base: previousRelease.tag_name,
+              head: currentRelease.tag_name
+            });
+
+            // Categorize changes
+            const categories = {
+              features: [],
+              bugfixes: [],
+              performance: [],
+              security: [],
+              breaking: [],
+              dependencies: [],
+              documentation: [],
+              other: []
+            };
+
+            // Process each commit
+            for (const commit of commits.commits) {
+              const message = commit.commit.message;
+              const firstLine = message.split('\n')[0];
+
+              if (firstLine.match(/^feat(\(.*\))?:/i)) {
+                categories.features.push(firstLine);
+              } else if (firstLine.match(/^fix(\(.*\))?:/i)) {
+                categories.bugfixes.push(firstLine);
+              } else if (firstLine.match(/^perf(\(.*\))?:/i)) {
+                categories.performance.push(firstLine);
+              } else if (firstLine.match(/^security(\(.*\))?:/i) || message.toLowerCase().includes('security')) {
+                categories.security.push(firstLine);
+              } else if (firstLine.includes('!:') || message.toLowerCase().includes('breaking')) {
+                categories.breaking.push(firstLine);
+              } else if (firstLine.match(/^(chore|build)(\(.*\))?: (bump|update|upgrade)/i)) {
+                categories.dependencies.push(firstLine);
+              } else if (firstLine.match(/^docs(\(.*\))?:/i)) {
+                categories.documentation.push(firstLine);
+              } else {
+                categories.other.push(firstLine);
+              }
+            }
+
+            // Build release notes
+            let releaseNotes = `## 🎉 ${currentRelease.name || currentRelease.tag_name}\n\n`;
+
+            if (categories.breaking.length > 0) {
+              releaseNotes += `### ⚠️ BREAKING CHANGES\n\n`;
+              categories.breaking.forEach(change => {
+                releaseNotes += `- ${change.replace(/^.*!:\s*/, '')}\n`;
+              });
+              releaseNotes += '\n';
+            }
+
+            if (categories.security.length > 0) {
+              releaseNotes += `### 🔒 Security Updates\n\n`;
+              categories.security.forEach(change => {
+                releaseNotes += `- ${change.replace(/^security(\(.*\))?:\s*/i, '')}\n`;
+              });
+              releaseNotes += '\n';
+            }
+
+            if (categories.features.length > 0) {
+              releaseNotes += `### ✨ New Features\n\n`;
+              categories.features.forEach(change => {
+                releaseNotes += `- ${change.replace(/^feat(\(.*\))?:\s*/i, '')}\n`;
+              });
+              releaseNotes += '\n';
+            }
+
+            if (categories.bugfixes.length > 0) {
+              releaseNotes += `### 🐛 Bug Fixes\n\n`;
+              categories.bugfixes.forEach(change => {
+                releaseNotes += `- ${change.replace(/^fix(\(.*\))?:\s*/i, '')}\n`;
+              });
+              releaseNotes += '\n';
+            }
+
+            if (categories.performance.length > 0) {
+              releaseNotes += `### ⚡ Performance Improvements\n\n`;
+              categories.performance.forEach(change => {
+                releaseNotes += `- ${change.replace(/^perf(\(.*\))?:\s*/i, '')}\n`;
+              });
+              releaseNotes += '\n';
+            }
+
+            if (categories.dependencies.length > 0) {
+              releaseNotes += `### 📦 Dependencies\n\n`;
+              releaseNotes += `- ${categories.dependencies.length} dependency update(s)\n\n`;
+            }
+
+            releaseNotes += `\n### 📊 Release Statistics\n\n`;
+            releaseNotes += `- **Commits**: ${commits.commits.length}\n`;
+            releaseNotes += `- **Files Changed**: ${commits.files.length}\n`;
+            releaseNotes += `- **Contributors**: ${new Set(commits.commits.map(c => c.author?.login).filter(Boolean)).size}\n`;
+            releaseNotes += `\n---\n\n_Automated release notes establishing comprehensive change tracking across your environment_`;
+
+            // Update release with generated notes
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: currentRelease.id,
+              body: releaseNotes
+            });
+
+            console.log('✅ Release notes generated and published');
+
+  # ================================================================
+  # REPOSITORY HEALTH MONITORING
+  # ================================================================
+
+  repository-health-check:
+    name: Monitor Repository Health
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'repository-health-check')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Analyze repository health metrics
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const healthMetrics = {
+              issues: { stale: 0, needsTriage: 0, total: 0 },
+              prs: { stale: 0, needsReview: 0, total: 0 },
+              security: { open: 0, critical: 0 },
+              documentation: { outdated: 0, missing: 0 }
+            };
+
+            // Check open issues
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            healthMetrics.issues.total = openIssues.filter(i => !i.pull_request).length;
+
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+            openIssues.forEach(issue => {
+              if (!issue.pull_request) {
+                if (new Date(issue.updated_at) < thirtyDaysAgo) {
+                  healthMetrics.issues.stale++;
+                }
+                if (issue.labels.length === 0) {
+                  healthMetrics.issues.needsTriage++;
+                }
+              }
+            });
+
+            // Check open PRs
+            const { data: openPRs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            healthMetrics.prs.total = openPRs.length;
+
+            openPRs.forEach(pr => {
+              if (new Date(pr.updated_at) < thirtyDaysAgo) {
+                healthMetrics.prs.stale++;
+              }
+              if (pr.requested_reviewers.length === 0 && pr.review_comments === 0) {
+                healthMetrics.prs.needsReview++;
+              }
+            });
+
+            // Generate health report
+            const healthScore = 100 - (
+              (healthMetrics.issues.stale / Math.max(healthMetrics.issues.total, 1)) * 20 +
+              (healthMetrics.prs.stale / Math.max(healthMetrics.prs.total, 1)) * 20 +
+              (healthMetrics.issues.needsTriage / Math.max(healthMetrics.issues.total, 1)) * 20
+            );
+
+            const healthLevel = healthScore >= 80 ? '🟢 Excellent' :
+                               healthScore >= 60 ? '🟡 Good' :
+                               healthScore >= 40 ? '🟠 Fair' : '🔴 Needs Attention';
+
+            const reportMessage = `## 🏥 Repository Health Report
+
+**Overall Health**: ${healthLevel} (${Math.round(healthScore)}/100)
+
+### 📊 Metrics
+
+**Issues:**
+- Total Open: ${healthMetrics.issues.total}
+- Stale (>30 days): ${healthMetrics.issues.stale}
+- Needs Triage: ${healthMetrics.issues.needsTriage}
+
+**Pull Requests:**
+- Total Open: ${healthMetrics.prs.total}
+- Stale (>30 days): ${healthMetrics.prs.stale}
+- Awaiting Review: ${healthMetrics.prs.needsReview}
+
+### 🎯 Recommended Actions
+
+${healthMetrics.issues.stale > 0 ? `- 📌 Review and close/update ${healthMetrics.issues.stale} stale issue(s)\n` : ''}${healthMetrics.issues.needsTriage > 0 ? `- 🏷️ Triage ${healthMetrics.issues.needsTriage} unlabeled issue(s)\n` : ''}${healthMetrics.prs.stale > 0 ? `- 🔄 Review ${healthMetrics.prs.stale} stale pull request(s)\n` : ''}${healthMetrics.prs.needsReview > 0 ? `- 👀 Request reviews for ${healthMetrics.prs.needsReview} PR(s)\n` : ''}${healthScore >= 80 ? '- ✅ Repository health is excellent - maintain current practices\n' : ''}
+**Next Health Check**: ${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+
+---
+
+_Automated health monitoring establishing proactive repository management workflows_`;
+
+            // Create health report issue if health is poor
+            if (healthScore < 60) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🏥 Repository Health Alert - Score: ${Math.round(healthScore)}/100`,
+                body: reportMessage,
+                labels: ['repository-health', 'maintenance']
+              });
+            } else {
+              console.log('✅ Repository health is good - no alert needed');
+              console.log(reportMessage);
+            }
