@@ -57,7 +57,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [showAddMemberDialog, setShowAddMemberDialog] = useState(false)
   const [showEventCreationDialog, setShowEventCreationDialog] = useState(false)
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading, error: authError, clearError } = useAuth()
 
   // All hooks must be called before any conditional returns
   const [members, setMembers] = useKV<Member[]>('ams-members', [])
@@ -89,6 +89,21 @@ function App() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading...</p>
+          {authError && (
+            <div className="mt-4 p-4 bg-destructive/10 text-destructive rounded-md max-w-md mx-auto">
+              <p className="font-semibold">Authentication Error</p>
+              <p className="text-sm mt-1">{authError}</p>
+              <button
+                onClick={() => {
+                  clearError()
+                  window.location.reload()
+                }}
+                className="mt-3 px-4 py-2 bg-destructive text-destructive-foreground rounded-md text-sm hover:bg-destructive/90"
+              >
+                Retry
+              </button>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -108,50 +123,57 @@ function App() {
   }
 
   useEffect(() => {
+    // Only initialize data if user is authenticated
+    if (!user) {
+      setIsLoading(false)
+      return
+    }
+
     const initializeData = async () => {
+      console.log('[App] Initializing data for authenticated user:', user.email)
       setIsLoading(true)
-      
+
       if (!members || members.length === 0) {
         const newMembers = generateMembers(100)
         setMembers(newMembers)
       }
-      
+
       if (!chapters || chapters.length === 0) {
         const newChapters = generateChapters()
         setChapters(newChapters)
       }
-      
+
       if (!events || events.length === 0) {
         const newEvents = generateEvents(20)
         setEvents(newEvents)
       }
-      
+
       if (!transactions || transactions.length === 0) {
         const newTransactions = generateTransactions(50)
         setTransactions(newTransactions)
       }
-      
+
       // Email campaigns initialization removed - will be created via wizard
-      
+
       if (!courses || courses.length === 0) {
         const newCourses = generateCourses(12)
         setCourses(newCourses)
-        
+
         const courseIds = newCourses.map(c => c.id)
         const newEnrollments = generateEnrollments(30, courseIds)
         setEnrollments(newEnrollments)
       }
-      
+
       if (!reports || reports.length === 0) {
         const newReports = generateReports(20)
         setReports(newReports)
       }
-      
+
       setTimeout(() => setIsLoading(false), 500)
     }
-    
+
     initializeData()
-  }, [])
+  }, [user?.id]) // Only re-run when user changes
 
   // Redirect chapter admins to their view by default
   useEffect(() => {

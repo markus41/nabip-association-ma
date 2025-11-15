@@ -15,9 +15,11 @@ export interface User {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
+  error: string | null
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   setUser: (user: User | null) => void
+  clearError: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -53,28 +55,28 @@ async function mapAuthUserToUser(authUser: SupabaseUser): Promise<User | null> {
       return null
     }
 
-    // Determine role from custom_fields or default to 'member'
-    // In production, this would check a roles table or use RLS functions
+    // Determine role from custom_fields ONLY (simplified approach)
+    // NOTE: RPC function checks removed as they don't exist in database yet
+    // Future: Re-enable after creating is_national_admin_member(), is_state_admin_member(), is_chapter_admin_member()
     const customFields = member.custom_fields as Record<string, any> | null
     let role: RoleName = 'member'
 
-    if (customFields?.role) {
-      role = customFields.role as RoleName
-    } else {
-      // Check if user is an admin using RLS functions
-      const { data: isNationalAdmin } = await supabase.rpc('is_national_admin_member')
-      const { data: isStateAdmin } = await supabase.rpc('is_state_admin_member')
-      const { data: isChapterAdmin } = await supabase.rpc('is_chapter_admin_member', {
-        chapter_id: member.chapter_id || ''
-      })
+    console.log('[mapAuthUserToUser] Determining role from custom_fields:', customFields)
 
-      if (isNationalAdmin) {
-        role = 'national_admin'
-      } else if (isStateAdmin) {
-        role = 'state_admin'
-      } else if (isChapterAdmin) {
-        role = 'chapter_admin'
+    // Extract role from custom_fields with validation
+    if (customFields && typeof customFields === 'object' && 'role' in customFields) {
+      const roleValue = customFields.role
+
+      // Validate role is a valid RoleName
+      const validRoles: RoleName[] = ['member', 'chapter_admin', 'state_admin', 'national_admin']
+      if (typeof roleValue === 'string' && validRoles.includes(roleValue as RoleName)) {
+        role = roleValue as RoleName
+        console.log('[mapAuthUserToUser] Role assigned from custom_fields:', role)
+      } else {
+        console.warn('[mapAuthUserToUser] Invalid role in custom_fields:', roleValue)
       }
+    } else {
+      console.warn('[mapAuthUserToUser] No role found in custom_fields, defaulting to member')
     }
 
     // Get chapter info for state/chapter admins
@@ -119,6 +121,7 @@ async function mapAuthUserToUser(authUser: SupabaseUser): Promise<User | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Initialize auth state and set up listener
   useEffect(() => {
@@ -140,20 +143,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           mapAuthUserToUser(session.user).then(appUser => {
             console.log('[AuthContext] User mapped:', appUser)
             setUserState(appUser)
+            setError(null)
             setIsLoading(false)
           }).catch(err => {
             console.error('[AuthContext] Error mapping user:', err)
+            setError('Failed to load user profile. Please refresh the page.')
             setUserState(null)
             setIsLoading(false)
           })
         } else {
           console.log('[AuthContext] No session found, setting loading to false')
+          setError(null)
           setIsLoading(false)
         }
       })
       .catch(err => {
         clearTimeout(timeout)
         console.error('[AuthContext] getSession error:', err)
+        setError('Failed to connect to authentication service. Please check your internet connection.')
         setIsLoading(false)
       })
 
@@ -175,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
+    setError(null)
     try {
       console.log('[login] Attempting login for:', email)
 
@@ -185,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) {
         console.error('[login] Auth error:', error)
+        setError(error.message || 'Invalid email or password')
         throw error
       }
 
@@ -199,15 +208,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const appUser = await Promise.race([mappingPromise, timeoutPromise])
         console.log('[login] User mapped successfully:', appUser)
+
+        if (!appUser) {
+          setError('No member record found for this account. Please contact support.')
+          throw new Error('No member record found')
+        }
+
         setUserState(appUser)
+        setError(null)
       }
     } catch (error) {
       console.error('[login] Login error:', error)
+      if (!error) {
+        setError('An unexpected error occurred during login')
+      }
       setIsLoading(false)
       throw error
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const clearError = () => {
+    setError(null)
   }
 
   const logout = async () => {
@@ -231,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, setUser }}>
+    <AuthContext.Provider value={{ user, isLoading, error, login, logout, setUser, clearError }}>
       {children}
     </AuthContext.Provider>
   )
