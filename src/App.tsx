@@ -445,7 +445,7 @@ function App() {
               loading={isLoading}
               onAddCourse={(courseData) => {
                 const newCourse: Course = {
-                  id: uuidv4(),
+                  id: `course_${Date.now()}`,
                   ...courseData,
                 }
                 setCourses([...(courses || []), newCourse])
