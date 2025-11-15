@@ -1,4 +1,4 @@
-name: Claude Code - Ultimate Edition
+name: Claude Code - Ultimate++ Edition
 on:
   # Respond to @claude mentions in various contexts
   issue_comment:
@@ -12,7 +12,7 @@ on:
   issues:
     types: [opened, assigned, labeled, reopened]
   pull_request:
-    types: [opened, ready_for_review, synchronize]
+    types: [opened, ready_for_review, synchronize, review_requested]
   
   # Manual trigger for maintenance tasks
   workflow_dispatch:
@@ -22,8 +22,10 @@ on:
         required: true
         type: choice
         options:
+          - 'Work on assigned issues'
+          - 'Review and edit stale PRs'
+          - 'Fix all linting errors'
           - 'Triage all open issues'
-          - 'Review stale PRs'
           - 'Update documentation'
           - 'Generate project status report'
           - 'Analyze code quality'
@@ -32,6 +34,14 @@ on:
         description: 'Scope of operation'
         required: false
         default: 'all'
+  
+  # Schedule for automated tasks
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday at 9 AM UTC for health check
+    - cron: '0 */6 * * *'  # Every 6 hours - check for issues assigned to Claude
+
+env:
+  CLAUDE_USERNAME: 'claude-code[bot]'
 
 jobs:
   # Main Claude Code job for @claude mentions and PR reviews
@@ -43,43 +53,102 @@ jobs:
       (github.event_name == 'issues' && github.event.action == 'opened' && contains(github.event.issue.body, '@claude')) ||
       (github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
-      contents: write          # Allow Claude to commit changes
-      pull-requests: write     # Allow Claude to create/update PRs
-      issues: write            # Allow Claude to manage issues
-      id-token: write          # Required for authentication
-      actions: read            # Read CI/CD results
-      checks: write            # Update check runs
-      discussions: write       # Participate in discussions
-      packages: read           # Read package info
-      statuses: write          # Update commit statuses
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+      checks: write
+      discussions: write
+      packages: read
+      statuses: write
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for better context
+          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Git for commits
+        run: |
+          git config --global user.name "Claude Code"
+          git config --global user.email "claude-code[bot]@users.noreply.github.com"
+      
+      - name: Detect request type
+        id: detect
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body || github.event.review.body || github.event.issue.body }}"
+          
+          # Detect if user wants Claude to edit PR
+          if echo "$COMMENT_BODY" | grep -qiE "@claude.*(edit|fix|update|change|modify).*(this )?pr"; then
+            echo "wants_pr_edit=true" >> $GITHUB_OUTPUT
+            echo "🔧 User wants PR edits"
+          fi
+          
+          # Detect if user wants Claude to implement something
+          if echo "$COMMENT_BODY" | grep -qiE "@claude.*(implement|code|write|create|build)"; then
+            echo "wants_implementation=true" >> $GITHUB_OUTPUT
+            echo "💻 User wants implementation"
+          fi
+          
+          # Detect if user wants comprehensive review
+          if echo "$COMMENT_BODY" | grep -qiE "@claude.*(review|analyze|check)"; then
+            echo "wants_review=true" >> $GITHUB_OUTPUT
+            echo "📋 User wants review"
+          fi
+          
+          # Detect if user wants help/guidance only
+          if echo "$COMMENT_BODY" | grep -qiE "@claude.*(help|how|what|explain|suggest)"; then
+            echo "wants_help=true" >> $GITHUB_OUTPUT
+            echo "💡 User wants help"
+          fi
+          
+          echo "comment_body<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMENT_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       
       - name: Setup Claude context
         id: context
         run: |
-          # Gather comprehensive context about the repository
           echo "Collecting repository context..."
           
           # Count open issues by priority
-          echo "open_critical_issues=$(gh issue list --label critical --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
-          echo "open_high_issues=$(gh issue list --label high-priority --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
-          echo "open_medium_issues=$(gh issue list --label medium-priority --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+          echo "open_critical=$(gh issue list --label critical --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+          echo "open_high=$(gh issue list --label high-priority --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+          echo "open_medium=$(gh issue list --label medium-priority --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
           
-          # Get recent activity
-          echo "recent_commits=$(git log --oneline -10 | wc -l)" >> $GITHUB_OUTPUT
-          echo "recent_prs=$(gh pr list --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
+          # Get current PR info if applicable
+          if [ "${{ github.event_name }}" == "pull_request" ] || [ "${{ github.event_name }}" == "pull_request_review_comment" ] || [ "${{ github.event_name }}" == "pull_request_review" ]; then
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+            echo "pr_title=$(gh pr view $PR_NUMBER --json title -q .title || echo 'Unknown')" >> $GITHUB_OUTPUT
+            echo "pr_files_changed=$(gh pr view $PR_NUMBER --json files -q '.files | length' || echo '0')" >> $GITHUB_OUTPUT
+            
+            # Check if PR has failing checks
+            FAILING_CHECKS=$(gh pr checks $PR_NUMBER --json state -q '[.[] | select(.state != "SUCCESS")] | length' || echo '0')
+            echo "pr_failing_checks=$FAILING_CHECKS" >> $GITHUB_OUTPUT
+          fi
+          
+          # Get current issue info if applicable
+          if [ "${{ github.event_name }}" == "issues" ] || [ "${{ github.event_name }}" == "issue_comment" ]; then
+            ISSUE_NUMBER="${{ github.event.issue.number }}"
+            echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+            echo "issue_title=$(gh issue view $ISSUE_NUMBER --json title -q .title || echo 'Unknown')" >> $GITHUB_OUTPUT
+            
+            # Check if issue is assigned to Claude
+            ASSIGNEES=$(gh issue view $ISSUE_NUMBER --json assignees -q '.assignees[].login' || echo '')
+            if echo "$ASSIGNEES" | grep -q "claude-code"; then
+              echo "assigned_to_claude=true" >> $GITHUB_OUTPUT
+            fi
+          fi
           
           # Project stats
           echo "total_issues=$(gh issue list --state all --json number | jq 'length')" >> $GITHUB_OUTPUT
-          echo "closed_issues=$(gh issue list --state closed --json number | jq 'length')" >> $GITHUB_OUTPUT
+          echo "recent_prs=$(gh pr list --state open --json number | jq 'length')" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ github.token }}
       
@@ -89,7 +158,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           
-          # Enhanced permissions for full GitHub capabilities
           additional_permissions: |
             actions: read
             checks: write
@@ -99,93 +167,297 @@ jobs:
             pull-requests: write
             statuses: write
           
-          # Custom prompt based on context
           prompt: |
             ${{ github.event_name == 'workflow_dispatch' && format('**Scheduled Task**: {0}', github.event.inputs.task) || '' }}
             
-            **Repository Context**:
+            **🎯 User Request Type**:
+            ${{ steps.detect.outputs.wants_pr_edit == 'true' && '⚠️ **USER WANTS YOU TO EDIT THE PR** - Make actual code changes and push commits!' || '' }}
+            ${{ steps.detect.outputs.wants_implementation == 'true' && '⚠️ **USER WANTS YOU TO IMPLEMENT CODE** - Write actual code and create commits!' || '' }}
+            ${{ steps.detect.outputs.wants_review == 'true' && '📋 **USER WANTS REVIEW** - Provide detailed code review with suggestions' || '' }}
+            ${{ steps.detect.outputs.wants_help == 'true' && '💡 **USER WANTS HELP** - Provide guidance and explanations' || '' }}
+            
+            **📊 Repository Status**:
             - Project: NABIP AMS (Association Management System)
-            - Open Issues: ${{ steps.context.outputs.total_issues }}
-            - Critical Priority: ${{ steps.context.outputs.open_critical_issues }}
-            - High Priority: ${{ steps.context.outputs.open_high_issues }}
-            - Open Pull Requests: ${{ steps.context.outputs.recent_prs }}
+            - Total Issues: ${{ steps.context.outputs.total_issues }} (419 planned)
+            - Open Critical: ${{ steps.context.outputs.open_critical }}
+            - Open High: ${{ steps.context.outputs.open_high }}
+            - Open PRs: ${{ steps.context.outputs.recent_prs }}
             
-            **Your Capabilities**:
-            - Review and comment on code
-            - Create/update issues and PRs
-            - Suggest fixes and improvements
-            - Update documentation
-            - Analyze code quality and security
-            - Manage labels and milestones
-            - Generate status reports
+            ${{ steps.context.outputs.pr_number && format('**🔀 PR Context**:
+            - PR #{0}: {1}
+            - Files Changed: {2}
+            - Failing Checks: {3}
+            - Branch: {4}
+            - ✅ You have WRITE access to this branch', steps.context.outputs.pr_number, steps.context.outputs.pr_title, steps.context.outputs.pr_files_changed, steps.context.outputs.pr_failing_checks, github.event.pull_request.head.ref) || '' }}
             
-            **Project-Specific Knowledge**:
-            - This is a comprehensive AMS platform with 419 tracked issues
-            - Priority #1: Fix core functionality (Add Member, Campaigns, Courses, Events, Reports, Portal Login)
-            - Tech stack: React, Node.js, PostgreSQL
-            - Focus areas: Member management, Chapter management, RBAC, Events, LMS
+            ${{ steps.context.outputs.issue_number && format('**📋 Issue Context**:
+            - Issue #{0}: {1}
+            - Assigned to you: {2}', steps.context.outputs.issue_number, steps.context.outputs.issue_title, steps.context.outputs.assigned_to_claude || 'false') || '' }}
             
-            Please provide actionable, specific assistance.
+            **🛠️ YOUR ENHANCED CAPABILITIES**:
+            
+            **✅ CODE EDITING (YOU CAN DO THIS!):**
+            - Edit files directly in PRs
+            - Create new files and components
+            - Fix bugs and implement features
+            - Refactor code for quality
+            - Add tests and documentation
+            - Commit and push changes
+            - Update PR descriptions
+            
+            **✅ REVIEW & ANALYSIS:**
+            - Review code quality and security
+            - Analyze performance issues
+            - Suggest improvements inline
+            - Identify breaking changes
+            - Check test coverage
+            
+            **✅ ISSUE MANAGEMENT:**
+            - Work on assigned issues
+            - Create sub-tasks and branches
+            - Update issue status
+            - Link related issues/PRs
+            - Manage labels
+            
+            **📚 Project Knowledge**:
+            - Platform: NABIP AMS with 419 tracked issues
+            - **Priority #1**: Core functionality (Issues #1-7):
+              - #1: Fix Add Member button
+              - #2: Fix New Campaign creation
+              - #3: Fix Create Course button
+              - #4: Fix course preview
+              - #5: Implement Member Portal login
+              - #6: Fix event creation
+              - #7: Fix Run Report functionality
+            - Stack: React (frontend), Node.js (backend), PostgreSQL (database)
+            - Design: "Software that feels inevitable" - radical simplicity
+            - Brand: Navy (#003366), Teal (#008B8B), Gold (#FFD700)
+            
+            **🎬 WHEN ASKED TO EDIT A PR:**
+            1. Review current code
+            2. Make requested changes using Editor tool
+            3. Run linting/formatting if needed
+            4. Changes will auto-commit (Git is configured)
+            5. Comment explaining what you changed
+            6. Offer to make further edits
+            
+            **🎬 WHEN ASSIGNED TO AN ISSUE:**
+            1. Read issue thoroughly
+            2. Review related code
+            3. Plan implementation
+            4. Create branch: `issue-{number}-{description}`
+            5. Implement the fix
+            6. Add tests if applicable
+            7. Create PR linking to issue
+            
+            **🎬 WHEN ASKED TO REVIEW:**
+            1. Analyze code quality
+            2. Check security and performance
+            3. Add inline comments
+            4. **ALWAYS OFFER TO FIX**: "Would you like me to fix these issues? Reply with '@claude fix this PR'"
+            
+            **💬 Communication:**
+            - Be direct: "Editing the PR now..."
+            - Explain changes made
+            - Ask for confirmation on major changes
+            - Offer follow-up help
+            
+            **🚨 CRITICAL REMINDERS**:
+            - ✅ Git is configured with your credentials
+            - ✅ You're on the correct branch  
+            - ✅ You SHOULD edit code when asked
+            - ✅ You SHOULD create commits
+            - ✅ Changes will auto-commit after you run
+            - ✅ Always explain what you changed
+            
+            **User's Request:**
+            ```
+            ${{ steps.detect.outputs.comment_body }}
+            ```
+            
+            **NOW TAKE ACTION!** If asked to edit code, DO IT using the Editor tool.
           
-          # Advanced configuration
           claude_args: |
             --allowed-tools Bash(*),Editor(*),Browser(*)
+            --max-iterations 75
+            --model claude-sonnet-4-20250514
             --verbose
       
-      - name: Label based on Claude's analysis
+      - name: Auto-commit Claude's changes
+        if: success()
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "✅ Claude made changes, committing..."
+            git add -A
+            
+            if [ -n "${{ steps.context.outputs.pr_number }}" ]; then
+              COMMIT_MSG="🤖 Claude: Updates to PR #${{ steps.context.outputs.pr_number }}"
+            elif [ -n "${{ steps.context.outputs.issue_number }}" ]; then
+              COMMIT_MSG="🤖 Claude: Work on #${{ steps.context.outputs.issue_number }}"
+            else
+              COMMIT_MSG="🤖 Claude: Automated improvements"
+            fi
+            
+            git commit -m "$COMMIT_MSG" -m "Requested by: @${{ github.actor }}" || echo "Nothing to commit"
+            git push origin HEAD || echo "Nothing to push"
+            
+            echo "✅ Changes committed and pushed by Claude"
+          else
+            echo "ℹ️ No changes to commit"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Auto-label new issues
         if: github.event_name == 'issues' && github.event.action == 'opened'
         run: |
-          # Auto-label new issues based on content analysis
           ISSUE_BODY="${{ github.event.issue.body }}"
           ISSUE_NUMBER="${{ github.event.issue.number }}"
           
-          # Add labels based on keywords
-          if echo "$ISSUE_BODY" | grep -qi "member"; then
-            gh issue edit $ISSUE_NUMBER --add-label "members"
-          fi
-          if echo "$ISSUE_BODY" | grep -qi "chapter"; then
-            gh issue edit $ISSUE_NUMBER --add-label "chapters"
-          fi
-          if echo "$ISSUE_BODY" | grep -qi "event"; then
-            gh issue edit $ISSUE_NUMBER --add-label "events"
-          fi
-          if echo "$ISSUE_BODY" | grep -qi "campaign\|email"; then
-            gh issue edit $ISSUE_NUMBER --add-label "campaigns"
-          fi
-          if echo "$ISSUE_BODY" | grep -qi "course\|learning\|lms"; then
-            gh issue edit $ISSUE_NUMBER --add-label "learning"
-          fi
-          if echo "$ISSUE_BODY" | grep -qi "report"; then
-            gh issue edit $ISSUE_NUMBER --add-label "reports"
-          fi
-          if echo "$ISSUE_BODY" | grep -qi "security\|auth\|permission"; then
-            gh issue edit $ISSUE_NUMBER --add-label "security"
-          fi
-          if echo "$ISSUE_BODY" | grep -qi "ui\|ux\|design"; then
-            gh issue edit $ISSUE_NUMBER --add-label "ui/ux"
-          fi
-          if echo "$ISSUE_BODY" | grep -qi "bug\|broken\|not working"; then
-            gh issue edit $ISSUE_NUMBER --add-label "bug"
-          fi
-          if echo "$ISSUE_BODY" | grep -qi "feature\|enhancement"; then
-            gh issue edit $ISSUE_NUMBER --add-label "enhancement"
-          fi
+          # Feature area labels
+          echo "$ISSUE_BODY" | grep -qi "member" && gh issue edit $ISSUE_NUMBER --add-label "members" || true
+          echo "$ISSUE_BODY" | grep -qi "chapter" && gh issue edit $ISSUE_NUMBER --add-label "chapters" || true
+          echo "$ISSUE_BODY" | grep -qi "event" && gh issue edit $ISSUE_NUMBER --add-label "events" || true
+          echo "$ISSUE_BODY" | grep -qiE "campaign|email" && gh issue edit $ISSUE_NUMBER --add-label "campaigns" || true
+          echo "$ISSUE_BODY" | grep -qiE "course|learning|lms" && gh issue edit $ISSUE_NUMBER --add-label "learning" || true
+          echo "$ISSUE_BODY" | grep -qi "report" && gh issue edit $ISSUE_NUMBER --add-label "reports" || true
+          echo "$ISSUE_BODY" | grep -qiE "security|auth|permission" && gh issue edit $ISSUE_NUMBER --add-label "security" || true
+          echo "$ISSUE_BODY" | grep -qiE "ui|ux|design" && gh issue edit $ISSUE_NUMBER --add-label "ui/ux" || true
+          
+          # Type labels
+          echo "$ISSUE_BODY" | grep -qiE "bug|broken|not working|error" && gh issue edit $ISSUE_NUMBER --add-label "bug" || true
+          echo "$ISSUE_BODY" | grep -qiE "feature|enhancement|add" && gh issue edit $ISSUE_NUMBER --add-label "enhancement" || true
+          
+          echo "✅ Auto-labeled issue #$ISSUE_NUMBER"
         env:
           GH_TOKEN: ${{ github.token }}
   
-  # Automatic PR review by Claude
-  claude-pr-review:
+  # When Claude is assigned to an issue
+  claude-work-on-assigned-issues:
     if: |
-      github.event_name == 'pull_request' && 
-      github.event.action == 'opened' || 
-      github.event.action == 'ready_for_review'
+      (github.event_name == 'issues' && github.event.action == 'assigned' && contains(github.event.assignee.login, 'claude-code')) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'Work on assigned issues') ||
+      (github.event_name == 'schedule' && github.schedule == '0 */6 * * *')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     permissions:
-      contents: read
+      contents: write
+      pull-requests: write
+      issues: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Git
+        run: |
+          git config --global user.name "Claude Code"
+          git config --global user.email "claude-code[bot]@users.noreply.github.com"
+      
+      - name: Get assigned issues
+        id: assigned
+        run: |
+          # Get all issues assigned to Claude
+          ASSIGNED_ISSUES=$(gh issue list --assignee claude-code --state open --json number,title,labels --limit 10)
+          echo "count=$(echo "$ASSIGNED_ISSUES" | jq 'length')" >> $GITHUB_OUTPUT
+          echo "issues=$ASSIGNED_ISSUES" >> $GITHUB_OUTPUT
+          
+          if [ "$(echo "$ASSIGNED_ISSUES" | jq 'length')" -gt 0 ]; then
+            echo "✅ Found $(echo "$ASSIGNED_ISSUES" | jq 'length') issues assigned to Claude"
+            echo "$ASSIGNED_ISSUES" | jq -r '.[] | "- Issue #\(.number): \(.title)"'
+          else
+            echo "ℹ️ No issues currently assigned to Claude"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+      
+      - name: Work on assigned issues
+        if: steps.assigned.outputs.count > 0
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            contents: write
+            pull-requests: write
+            issues: write
+          prompt: |
+            **🎯 WORK ON ASSIGNED ISSUES**
+            
+            You have **${{ steps.assigned.outputs.count }}** issue(s) assigned to you:
+            
+            ${{ steps.assigned.outputs.issues }}
+            
+            **Your Mission:**
+            For each assigned issue (prioritize by label: critical > high > medium):
+            
+            1. ✅ Read the issue carefully
+            2. ✅ Check if there's already a PR or branch
+            3. ✅ If not started:
+               - Create branch: `issue-{number}-{short-description}`
+               - Implement the fix/feature
+               - Add/update tests
+               - Commit with: `fix(#{number}): description`
+               - Push branch
+               - Create PR with "Closes #{number}"
+               - Comment on issue with PR link
+            4. ✅ If already in progress:
+               - Check out the branch
+               - Continue work from where it left off
+               - Push updates
+               - Update PR/issue with progress
+            
+            **Project Context:**
+            - NABIP AMS: 419 total issues
+            - **Priority #1 (Issues #1-7)**: Core functionality fixes
+            - Stack: React + Node.js + PostgreSQL
+            - Quality: ESLint, Prettier, Jest for tests
+            - Commits: Conventional commits (fix:, feat:, etc.)
+            
+            **Implementation Guidelines:**
+            - Write production-quality code
+            - Add error handling
+            - Include comments for complex logic
+            - Follow React best practices
+            - Use NABIP brand colors where applicable
+            - Test your changes
+            
+            **Git Workflow:**
+            ```bash
+            # For each issue:
+            git checkout -b issue-{number}-fix
+            # Implement the fix
+            git add .
+            git commit -m "fix(#{number}): implement {feature}"
+            git push origin issue-{number}-fix
+            gh pr create --title "Fix #{number}: {title}" \
+                         --body "Closes #{number}\n\n## Changes\n- ..." \
+                         --label "automated,claude-created"
+            gh issue comment {number} --body "Created PR: #{pr_number}"
+            ```
+            
+            **Time Management:**
+            - Spend max 15 min per issue
+            - If issue is complex, break into sub-tasks and comment
+            - If blocked, comment on issue explaining blocker
+            - Create draft PR for work-in-progress
+            
+            **Start with highest priority issue and work through the list!**
+          claude_args: |
+            --allowed-tools Bash(*),Editor(*)
+            --max-iterations 150
+            --model claude-sonnet-4-20250514
+  
+  # Auto-review and offer to fix PRs
+  claude-pr-auto-review:
+    if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'ready_for_review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
       pull-requests: write
       checks: write
-      statuses: write
     
     steps:
       - name: Checkout PR
@@ -194,124 +466,185 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
       
-      - name: Get changed files
-        id: changed-files
+      - name: Setup Git
         run: |
-          # Get list of changed files for focused review
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}..HEAD | tr '\n' ',' | sed 's/,$//')
-          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
-          echo "count=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}..HEAD | wc -l)" >> $GITHUB_OUTPUT
+          git config --global user.name "Claude Code"
+          git config --global user.email "claude-code[bot]@users.noreply.github.com"
       
-      - name: Claude PR Review
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          additional_permissions: |
-            actions: read
-            checks: write
-            contents: read
-            pull-requests: write
-          prompt: |
-            **Automatic PR Review Request**
-            
-            PR Title: ${{ github.event.pull_request.title }}
-            PR Number: #${{ github.event.pull_request.number }}
-            Author: @${{ github.event.pull_request.user.login }}
-            Changed Files: ${{ steps.changed-files.outputs.count }}
-            
-            **Review Checklist**:
-            ✓ Code quality and best practices
-            ✓ Security vulnerabilities
-            ✓ Performance considerations
-            ✓ Test coverage (if applicable)
-            ✓ Documentation updates needed
-            ✓ Breaking changes
-            ✓ Alignment with NABIP AMS architecture
-            
-            **Context**: This PR is part of the NABIP AMS project with 419 tracked issues.
-            Priority areas: Core functionality fixes, RBAC, Member/Chapter management.
-            
-            Please provide a thorough but constructive review.
-            Focus on actionable feedback and suggest specific improvements.
-            
-            Files changed: ${{ steps.changed-files.outputs.files }}
-          claude_args: |
-            --allowed-tools Bash(gh pr *),Editor(*),Browser(*)
-            --model claude-sonnet-4-20250514
-  
-  # Weekly project health check
-  claude-health-check:
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.task == 'Generate project status report')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: read
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Generate health metrics
-        id: metrics
+      - name: Analyze PR
+        id: pr-info
         run: |
-          # Comprehensive project health metrics
-          cat > project-metrics.json << 'EOF'
-          {
-            "issues": {
-              "total": $(gh issue list --state all --json number | jq 'length'),
-              "open": $(gh issue list --state open --json number | jq 'length'),
-              "closed": $(gh issue list --state closed --json number | jq 'length'),
-              "critical": $(gh issue list --label critical --state open --json number | jq 'length'),
-              "high": $(gh issue list --label high-priority --state open --json number | jq 'length'),
-              "blocked": $(gh issue list --label blocked --state open --json number | jq 'length')
-            },
-            "pull_requests": {
-              "open": $(gh pr list --state open --json number | jq 'length'),
-              "merged_this_week": $(gh pr list --state merged --search "merged:>=$(date -d '7 days ago' +%Y-%m-%d)" --json number | jq 'length')
-            },
-            "velocity": {
-              "issues_closed_this_week": $(gh issue list --state closed --search "closed:>=$(date -d '7 days ago' +%Y-%m-%d)" --json number | jq 'length'),
-              "issues_opened_this_week": $(gh issue list --search "created:>=$(date -d '7 days ago' +%Y-%m-%d)" --json number | jq 'length')
-            }
-          }
-          EOF
+          PR_NUM=${{ github.event.pull_request.number }}
           
-          echo "metrics=$(cat project-metrics.json)" >> $GITHUB_OUTPUT
+          # Get changed files
+          CHANGED=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}..HEAD | tr '\n' ',' | sed 's/,$//')
+          echo "changed_files=$CHANGED" >> $GITHUB_OUTPUT
+          echo "files_count=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}..HEAD | wc -l)" >> $GITHUB_OUTPUT
+          
+          # Get diff stats
+          ADDS=$(git diff --numstat origin/${{ github.event.pull_request.base.ref }}..HEAD | awk '{sum+=$1} END {print sum}')
+          DELS=$(git diff --numstat origin/${{ github.event.pull_request.base.ref }}..HEAD | awk '{sum+=$2} END {print sum}')
+          echo "additions=$ADDS" >> $GITHUB_OUTPUT
+          echo "deletions=$DELS" >> $GITHUB_OUTPUT
+          
+          # Check test status
+          FAILING=$(gh pr checks $PR_NUM --json state -q '[.[] | select(.state != "SUCCESS")] | length' || echo '0')
+          echo "failing_checks=$FAILING" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ github.token }}
       
-      - name: Claude Health Analysis
+      - name: Claude review and offer fixes
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           additional_permissions: |
             contents: write
+            pull-requests: write
+            checks: write
+          prompt: |
+            **🔀 AUTO PR REVIEW + FIX OFFER**
+            
+            **PR Details:**
+            - #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}
+            - Author: @${{ github.event.pull_request.user.login }}
+            - Branch: `${{ github.event.pull_request.head.ref }}`
+            - Files: ${{ steps.pr-info.outputs.files_count }} (+${{ steps.pr-info.outputs.additions }}/-${{ steps.pr-info.outputs.deletions }})
+            - Failing checks: ${{ steps.pr-info.outputs.failing_checks }}
+            
+            **Review Checklist:**
+            ✅ Code quality & best practices
+            ✅ Security (SQL injection, XSS, auth issues)
+            ✅ Performance considerations
+            ✅ Test coverage
+            ✅ Documentation
+            ✅ Breaking changes
+            ✅ NABIP AMS alignment
+            ✅ Accessibility
+            ✅ Error handling
+            
+            **Your Tasks:**
+            
+            1. **REVIEW** - Provide inline comments on issues
+            2. **CATEGORIZE** - Label issues as: 🔴 Critical, 🟡 Important, ℹ️ Nice-to-have
+            3. **OFFER TO FIX** - End your review with:
+               
+               "**Would you like me to fix these issues?**
+               
+               Just reply with `@claude fix this PR` and I'll:
+               - Fix [list specific items]
+               - Run linting/formatting  
+               - Update tests if needed
+               - Push commits directly to this branch
+               
+               Or reply with `@claude fix [specific issue]` for individual fixes."
+            
+            4. **AUTO-FIX SIMPLE ISSUES** - If only minor issues like:
+               - Missing semicolons
+               - Formatting inconsistencies
+               - Import organization
+               - Simple typos
+               
+               Just fix them now and comment: "✅ Auto-fixed minor issues (formatting, imports)"
+            
+            **Changed Files:**
+            ${{ steps.pr-info.outputs.changed_files }}
+            
+            **Be helpful and constructive. Praise good practices too!**
+          claude_args: |
+            --allowed-tools Bash(gh pr *),Editor(*),Browser(*)
+            --model claude-sonnet-4-20250514
+      
+      - name: Auto-commit minor fixes
+        if: success()
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "✅ Claude made auto-fixes"
+            git add -A
+            git commit -m "🤖 Claude: Auto-fix minor issues (linting, formatting)" || true
+            git push origin ${{ github.event.pull_request.head.ref }} || true
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  # Weekly health check
+  claude-weekly-health:
+    if: github.event_name == 'schedule' && github.schedule == '0 9 * * 1'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Collect metrics
+        id: metrics
+        run: |
+          cat > metrics.json << 'EOF'
+          {
+            "issues": {
+              "total": $(gh issue list --state all --json number | jq 'length'),
+              "open": $(gh issue list --state open --json number | jq 'length'),
+              "critical_open": $(gh issue list --label critical --state open --json number | jq 'length'),
+              "assigned_to_claude": $(gh issue list --assignee claude-code --state open --json number | jq 'length'),
+              "closed_this_week": $(gh issue list --state closed --search "closed:>=$(date -d '7 days ago' +%Y-%m-%d)" --json number | jq 'length')
+            },
+            "prs": {
+              "open": $(gh pr list --state open --json number | jq 'length'),
+              "merged_this_week": $(gh pr list --state merged --search "merged:>=$(date -d '7 days ago' +%Y-%m-%d)" --json number | jq 'length')
+            }
+          }
+          EOF
+          echo "data=$(cat metrics.json)" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+      
+      - name: Generate health report
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
             issues: write
           prompt: |
-            **Weekly Project Health Check**
+            **📊 WEEKLY HEALTH CHECK - Create Status Report**
             
-            Project: NABIP AMS
-            Date: $(date +%Y-%m-%d)
+            **Metrics:**
+            ${{ steps.metrics.outputs.data }}
             
-            **Metrics**:
-            ${{ steps.metrics.outputs.metrics }}
+            **Create an issue with this template:**
+            ```
+            Title: 📊 Weekly Health Report - $(date +%Y-%m-%d)
             
-            **Tasks**:
-            1. Analyze project health and velocity
-            2. Identify bottlenecks and blockers
-            3. Suggest priority adjustments
-            4. Create a status report issue
-            5. Update project documentation if needed
+            ## Health Score: [Calculate 0-100]
             
-            **Focus Areas**:
-            - Are critical issues being addressed?
-            - Is the team making progress on Phase 1 (Core Fixes)?
-            - Are there any concerning trends?
-            - What should leadership know about?
+            ## This Week
+            - Issues Closed: X
+            - PRs Merged: X  
+            - Issues Opened: X
+            - Velocity: [Trend]
             
-            Please create a comprehensive status report as a new issue.
+            ## Overall Status
+            - Total Issues: 419 (planned)
+            - Currently Open: X
+            - Critical Remaining: X
+            - Claude's Queue: X assigned issues
+            
+            ## Phase 1 Progress (Issues #1-129)
+            [Calculate completion %]
+            
+            ## 🚨 Concerns
+            [Any red flags]
+            
+            ## 🎯 Recommendations
+            [Specific actions]
+            
+            ## Claude's Contributions
+            - Issues assigned: X
+            - PRs reviewed: X
+            - Auto-fixes made: X
+            ```
+            
+            Label with: `status-report`, `weekly-health`
           claude_args: |
-            --allowed-tools Bash(*),Editor(*)
-            --model claude-sonnet-4-20250514
-
+            --allowed-tools Bash(gh issue create)
